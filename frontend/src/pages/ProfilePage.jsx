@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import { profileApi, schemesApi } from '../api';
 import { Link, useSearchParams } from 'react-router-dom';

@@ -1,6 +1,7 @@
 package com.schemesathi.service;
 
 import com.schemesathi.entity.*;
+import com.schemesathi.repository.CitizenProfileRepository;
 import com.schemesathi.repository.SchemeRepository;
 import com.schemesathi.repository.UserRepository;
 import org.slf4j.Logger;
@@ -24,28 +25,34 @@ public class DataSeeder implements CommandLineRunner {
 
     private final SchemeRepository schemeRepository;
     private final UserRepository userRepository;
+    private final CitizenProfileRepository citizenProfileRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataSeeder(SchemeRepository schemeRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public DataSeeder(SchemeRepository schemeRepository,
+                      UserRepository userRepository,
+                      CitizenProfileRepository citizenProfileRepository,
+                      PasswordEncoder passwordEncoder) {
         this.schemeRepository = schemeRepository;
         this.userRepository = userRepository;
+        this.citizenProfileRepository = citizenProfileRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
+        seedDefaultUsers();
+
         if (schemeRepository.count() > 0) {
-            log.info("Database already seeded. Skipping.");
+            log.info("Database already seeded with schemes. Skipping scheme data.");
             return;
         }
 
         log.info("Seeding government scheme data...");
         seedSchemes();
-        seedAdminUser();
         log.info("Data seeding complete. {} schemes loaded.", schemeRepository.count());
     }
 
-    private void seedAdminUser() {
+    private void seedDefaultUsers() {
         if (!userRepository.existsByEmail("admin@schemesathi.in")) {
             User admin = User.builder()
                     .email("admin@schemesathi.in")
@@ -55,6 +62,42 @@ public class DataSeeder implements CommandLineRunner {
                     .build();
             userRepository.save(admin);
             log.info("Admin user created.");
+        }
+
+        if (!userRepository.existsByEmail("citizen@schemesathi.in")) {
+            User citizen = User.builder()
+                    .email("citizen@schemesathi.in")
+                    .password(passwordEncoder.encode("Citizen@123"))
+                    .fullName("Ramesh Kumar (Demo Citizen)")
+                    .phone("9876543210")
+                    .role(User.UserRole.CITIZEN)
+                    .build();
+            citizen = userRepository.save(citizen);
+            log.info("Demo Citizen user created.");
+
+            if (citizenProfileRepository.findByUserId(citizen.getId()).isEmpty()) {
+                CitizenProfile profile = CitizenProfile.builder()
+                        .user(citizen)
+                        .age(42)
+                        .gender("Male")
+                        .state("Telangana")
+                        .district("Hyderabad")
+                        .occupation("Farmer / Agriculture")
+                        .annualIncome(95000.0)
+                        .educationLevel("10th")
+                        .category("OBC")
+                        .landOwnership(true)
+                        .landArea(2.5)
+                        .employmentStatus("SelfEmployed")
+                        .residenceType("Rural")
+                        .maritalStatus("Married")
+                        .familySize(4)
+                        .bplStatus(true)
+                        .rationCardType("PHH")
+                        .build();
+                citizenProfileRepository.save(profile);
+                log.info("Demo Citizen profile created.");
+            }
         }
     }
 

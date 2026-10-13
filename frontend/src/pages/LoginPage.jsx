@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { ShieldCheck, Lock, Mail } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, UserCheck, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password.');
@@ -30,10 +31,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoCitizenLogin = () => {
+    setEmail('citizen@schemesathi.in');
+    setPassword('Citizen@123');
+    setError('');
+  };
+
   const handleDemoAdminLogin = () => {
     setEmail('admin@schemesathi.in');
     setPassword('Admin@SchemeSathi2024');
+    setError('');
   };
+
+  const isNotFoundOrUnregistered =
+    error.toLowerCase().includes('no account') ||
+    error.toLowerCase().includes('register') ||
+    error.toLowerCase().includes('not found') ||
+    error.toLowerCase().includes('invalid');
 
   return (
     <div className="container fade-in" style={{ padding: '60px 24px 100px', maxWidth: '480px' }}>
@@ -61,18 +75,40 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error notification */}
+        {/* Error notification with action */}
         {error && (
           <div style={{
             background: 'rgba(239, 68, 68, 0.12)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: '10px',
-            padding: '10px 14px',
+            borderRadius: '12px',
+            padding: '12px 14px',
             color: '#f87171',
-            fontSize: '0.85rem',
+            fontSize: '0.86rem',
             marginBottom: '20px'
           }}>
-            {error}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ margin: 0, lineHeight: 1.4 }}>{error}</p>
+                {isNotFoundOrUnregistered && (
+                  <Link
+                    to={email.trim() ? `/register?email=${encodeURIComponent(email.trim())}` : '/register'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '8px',
+                      color: '#38bdf8',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    Click here to register with {email.trim() || 'this email'} <ArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -122,38 +158,71 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Credentials Quick Button */}
+        {/* Quick Demo Credentials */}
         <div style={{
           marginTop: '24px',
           padding: '14px',
           background: 'rgba(255, 255, 255, 0.03)',
-          borderRadius: '10px',
+          borderRadius: '12px',
           border: '1px solid var(--border-subtle)',
           textAlign: 'center'
         }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>Administrator Quick Fill:</span>
-          <button
-            type="button"
-            onClick={handleDemoAdminLogin}
-            style={{
-              display: 'block',
-              margin: '6px auto 0',
-              background: 'transparent',
-              color: '#38bdf8',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-          >
-            Click here to fill Admin credentials
-          </button>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Instant Demo Logins
+          </span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+            <button
+              type="button"
+              onClick={handleDemoCitizenLogin}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                color: '#38bdf8',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <UserCheck size={14} /> Demo Citizen
+            </button>
+            <button
+              type="button"
+              onClick={handleDemoAdminLogin}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: 'rgba(249, 115, 22, 0.12)',
+                border: '1px solid rgba(249, 115, 22, 0.3)',
+                color: '#f97316',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <ShieldCheck size={14} /> System Admin
+            </button>
+          </div>
         </div>
 
         {/* Register Link */}
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          Don't have an account yet?{' '}
+          <Link
+            to={email.trim() ? `/register?email=${encodeURIComponent(email.trim())}` : '/register'}
+            style={{ color: 'var(--primary)', fontWeight: 700 }}
+          >
             Register as a Citizen
           </Link>
         </div>

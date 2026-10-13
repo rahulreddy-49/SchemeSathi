@@ -32,15 +32,19 @@ public class AuthService {
 
     @Transactional
     public AuthDto.AuthResponse register(AuthDto.RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
-            throw new IllegalArgumentException("Email already registered");
+        String cleanEmail = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        if (cleanEmail.isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        if (userRepository.existsByEmail(cleanEmail)) {
+            throw new IllegalArgumentException("An account with email '" + cleanEmail + "' is already registered. Please sign in instead.");
         }
 
         User user = User.builder()
-                .email(request.getEmail().toLowerCase().trim())
+                .email(cleanEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName().trim())
-                .phone(request.getPhone())
+                .fullName(request.getFullName() != null ? request.getFullName().trim() : "")
+                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
                 .role(User.UserRole.CITIZEN)
                 .build();
 
@@ -58,14 +62,19 @@ public class AuthService {
 
     @Transactional
     public AuthDto.AuthResponse login(AuthDto.LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Invalid email or password");
+        String cleanEmail = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        if (cleanEmail.isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
         }
 
-        if (!user.getActive()) {
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No account found with email '" + cleanEmail + "'. Please click 'Register as a Citizen' below to create one."));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Incorrect password for '" + cleanEmail + "'. Please check your password and try again.");
+        }
+
+        if (user.getActive() != null && !user.getActive()) {
             throw new IllegalArgumentException("Account is deactivated");
         }
 
@@ -85,7 +94,8 @@ public class AuthService {
     }
 
     public User getCurrentUser(String email) {
-        return userRepository.findByEmail(email)
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
+        return userRepository.findByEmail(cleanEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 }

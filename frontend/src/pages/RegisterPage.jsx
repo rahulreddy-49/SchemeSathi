@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { ShieldCheck, Lock, Mail, User, Phone } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(fullName, email, password, phone);
+      await register(fullName.trim(), email.trim(), password, phone?.trim() || '');
       navigate('/profile');
     } catch (err) {
       setError(err.message || 'Registration failed. Email may already be in use.');
@@ -103,7 +104,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 required
-                placeholder="ramesh@example.com"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={{ width: '100%', paddingLeft: '42px' }}
@@ -157,7 +158,10 @@ export default function RegisterPage() {
         {/* Existing Account Link */}
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           Already registered?{' '}
-          <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          <Link
+            to={email.trim() ? `/login?email=${encodeURIComponent(email.trim())}` : '/login'}
+            style={{ color: 'var(--primary)', fontWeight: 700 }}
+          >
             Sign In here
           </Link>
         </div>

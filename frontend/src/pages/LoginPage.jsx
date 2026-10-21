@@ -31,15 +31,11 @@ export default function LoginPage() {
     }
   };
 
+  const showDemoLogins = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_LOGINS === 'true';
+
   const handleDemoCitizenLogin = () => {
     setEmail('citizen@schemesathi.in');
     setPassword('Citizen@123');
-    setError('');
-  };
-
-  const handleDemoAdminLogin = () => {
-    setEmail('admin@schemesathi.in');
-    setPassword('Admin@SchemeSathi2024');
     setError('');
   };
 
@@ -158,63 +154,44 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Demo Credentials */}
-        <div style={{
-          marginTop: '24px',
-          padding: '14px',
-          background: 'rgba(255, 255, 255, 0.03)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-subtle)',
-          textAlign: 'center'
-        }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Instant Demo Logins
-          </span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-            <button
-              type="button"
-              onClick={handleDemoCitizenLogin}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(56, 189, 248, 0.12)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                color: '#38bdf8',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <UserCheck size={14} /> Demo Citizen
-            </button>
-            <button
-              type="button"
-              onClick={handleDemoAdminLogin}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(249, 115, 22, 0.12)',
-                border: '1px solid rgba(249, 115, 22, 0.3)',
-                color: '#f97316',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <ShieldCheck size={14} /> System Admin
-            </button>
+        {/* Quick Demo Credentials - exclusively for development / demo mode */}
+        {showDemoLogins && (
+          <div style={{
+            marginTop: '24px',
+            padding: '14px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: '1px solid var(--border-subtle)',
+            textAlign: 'center'
+          }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Development Demo Login
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginTop: '10px' }}>
+              <button
+                type="button"
+                onClick={handleDemoCitizenLogin}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  color: '#38bdf8',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <UserCheck size={14} /> Fill Demo Citizen Credentials
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Register Link */}
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>

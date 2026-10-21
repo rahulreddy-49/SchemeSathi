@@ -27,20 +27,39 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final CitizenProfileRepository citizenProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.core.env.Environment env;
+    private final boolean seedDemoUsers;
 
     public DataSeeder(SchemeRepository schemeRepository,
                       UserRepository userRepository,
                       CitizenProfileRepository citizenProfileRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      org.springframework.core.env.Environment env,
+                      @org.springframework.beans.factory.annotation.Value("${app.seed.demo-users:false}") boolean seedDemoUsers) {
         this.schemeRepository = schemeRepository;
         this.userRepository = userRepository;
         this.citizenProfileRepository = citizenProfileRepository;
         this.passwordEncoder = passwordEncoder;
+        this.env = env;
+        this.seedDemoUsers = seedDemoUsers;
     }
 
     @Override
     public void run(String... args) {
-        seedDefaultUsers();
+        boolean isProduction = env != null && (
+                env.matchesProfiles("prod", "production")
+                || "prod".equalsIgnoreCase(env.getProperty("app.environment"))
+                || "production".equalsIgnoreCase(env.getProperty("app.environment"))
+        );
+
+        boolean allowDemoUsers = seedDemoUsers || (env != null && env.matchesProfiles("dev", "demo", "local", "test"));
+
+        if (allowDemoUsers && !isProduction) {
+            log.info("Development/demo environment active: seeding demo accounts.");
+            seedDefaultUsers();
+        } else {
+            log.info("Production/default mode active: demo user seeding is disabled.");
+        }
 
         if (schemeRepository.count() > 0) {
             log.info("Database already seeded with schemes. Skipping scheme data.");

@@ -21,6 +21,9 @@ public class ProfileController {
     @GetMapping
     public ResponseEntity<ApiResponse<CitizenProfileDto>> getProfile(
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
         CitizenProfileDto profile = profileService.getProfile(user);
         return ResponseEntity.ok(ApiResponse.success(profile));
     }
@@ -29,6 +32,9 @@ public class ProfileController {
     public ResponseEntity<ApiResponse<CitizenProfileDto>> saveProfile(
             @AuthenticationPrincipal User user,
             @RequestBody CitizenProfileDto dto) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
         CitizenProfileDto profile = profileService.saveProfile(user, dto);
         return ResponseEntity.ok(ApiResponse.success(profile, "Profile saved successfully"));
     }
@@ -37,6 +43,9 @@ public class ProfileController {
     public ResponseEntity<ApiResponse<CitizenProfileDto>> updateProfile(
             @AuthenticationPrincipal User user,
             @RequestBody CitizenProfileDto dto) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
         CitizenProfileDto profile = profileService.updateProfileFields(user, dto);
         return ResponseEntity.ok(ApiResponse.success(profile, "Profile updated successfully"));
     }

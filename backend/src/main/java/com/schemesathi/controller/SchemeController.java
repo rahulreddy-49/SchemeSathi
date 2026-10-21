@@ -114,6 +114,10 @@ public class SchemeController {
     public ResponseEntity<ApiResponse<String>> saveScheme(
             @PathVariable Long id,
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
         if (savedSchemeRepository.existsByUserIdAndSchemeId(user.getId(), id)) {
             return ResponseEntity.ok(ApiResponse.success("Already saved", "Scheme already saved"));
         }
@@ -133,6 +137,10 @@ public class SchemeController {
     public ResponseEntity<ApiResponse<String>> unsaveScheme(
             @PathVariable Long id,
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
         savedSchemeRepository.deleteByUserIdAndSchemeId(user.getId(), id);
         return ResponseEntity.ok(ApiResponse.success("Removed", "Scheme removed from saved"));
     }
@@ -140,6 +148,10 @@ public class SchemeController {
     @GetMapping("/saved")
     public ResponseEntity<ApiResponse<List<SchemeDto>>> getSavedSchemes(
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
         List<SavedScheme> saved = savedSchemeRepository.findByUserId(user.getId());
         List<SchemeDto> schemes = saved.stream()
                 .map(s -> schemeService.getSchemeById(s.getScheme().getId(), user.getId()))

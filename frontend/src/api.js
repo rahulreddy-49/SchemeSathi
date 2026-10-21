@@ -54,6 +54,8 @@ export const schemesApi = {
   getById: (id) => api.get(`/schemes/${id}`),
   checkEligibility: (id) => api.get(`/schemes/${id}/eligibility`),
   checkAllEligibility: () => api.get('/schemes/eligibility/all'),
+  evaluateCriteria: (id, criteria) => api.post(`/schemes/${id}/eligibility`, criteria),
+  evaluateAllCriteria: (criteria) => api.post('/schemes/eligibility/all', criteria),
   save: (id) => api.post(`/schemes/${id}/save`),
   unsave: (id) => api.delete(`/schemes/${id}/save`),
   getSaved: () => api.get('/schemes/saved'),
@@ -70,6 +72,7 @@ export const demoApi = {
   getSchemes: () => api.get('/demo/schemes'),
   getScheme: (id) => api.get(`/demo/schemes/${id}`),
   checkEligibility: (schemeId, profile) => api.post(`/demo/eligibility/${schemeId}`, profile),
+  checkAllEligibility: (profile) => api.post('/demo/eligibility/all', profile),
   getProfiles: () => api.get('/demo/profiles')
 };
 

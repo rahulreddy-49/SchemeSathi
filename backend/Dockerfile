@@ -15,9 +15,9 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Set up non-root user and directory for file-based H2 database
+# Set up non-root user for secure container execution
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
-    mkdir -p /app/data && chown -R appuser:appgroup /app
+    chown -R appuser:appgroup /app
 
 # Copy executable JAR from builder stage
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar /app/app.jar

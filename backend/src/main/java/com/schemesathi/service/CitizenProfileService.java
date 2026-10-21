@@ -123,4 +123,33 @@ public class CitizenProfileService {
                 .completenessPercentage(p.getCompletenessPercentage())
                 .build();
     }
+
+    public static CitizenProfile toTransientEntity(CitizenProfileDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        return CitizenProfile.builder()
+                .age(dto.getAge())
+                .gender(dto.getGender())
+                .state(dto.getState())
+                .district(dto.getDistrict())
+                .occupation(dto.getOccupation())
+                .annualIncome(dto.getAnnualIncome())
+                .educationLevel(dto.getEducationLevel())
+                .category(dto.getCategory())
+                .disabilityStatus(dto.getDisabilityStatus() != null ? dto.getDisabilityStatus() : false)
+                .disabilityType(dto.getDisabilityType())
+                .disabilityPercentage(dto.getDisabilityPercentage())
+                .landOwnership(dto.getLandOwnership() != null ? dto.getLandOwnership() : false)
+                .landArea(dto.getLandArea())
+                .employmentStatus(dto.getEmploymentStatus())
+                .residenceType(dto.getResidenceType())
+                .maritalStatus(dto.getMaritalStatus())
+                .familySize(dto.getFamilySize())
+                .bplStatus(dto.getBplStatus() != null ? dto.getBplStatus() : false)
+                .rationCardType(dto.getRationCardType())
+                .minorityStatus(dto.getMinorityStatus() != null ? dto.getMinorityStatus() : false)
+                .exServiceman(dto.getExServiceman() != null ? dto.getExServiceman() : false)
+                .build();
+    }
 }

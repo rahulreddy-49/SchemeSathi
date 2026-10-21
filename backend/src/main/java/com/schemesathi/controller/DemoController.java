@@ -7,8 +7,10 @@ import com.schemesathi.dto.SchemeDto;
 import com.schemesathi.entity.CitizenProfile;
 import com.schemesathi.entity.Scheme;
 import com.schemesathi.repository.SchemeRepository;
+import com.schemesathi.service.CitizenProfileService;
 import com.schemesathi.service.EligibilityEngine;
 import com.schemesathi.service.SchemeService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,31 +50,24 @@ public class DemoController {
     @PostMapping("/eligibility/{schemeId}")
     public ResponseEntity<ApiResponse<EligibilityResultDto>> checkDemoEligibility(
             @PathVariable Long schemeId,
-            @RequestBody CitizenProfileDto profileDto) {
+            @Valid @RequestBody CitizenProfileDto profileDto) {
         Scheme scheme = schemeRepository.findById(schemeId).orElse(null);
         if (scheme == null) {
             return ResponseEntity.notFound().build();
         }
 
-        // Create a transient profile from the DTO — never saved
-        CitizenProfile demoProfile = CitizenProfile.builder()
-                .age(profileDto.getAge())
-                .gender(profileDto.getGender())
-                .state(profileDto.getState())
-                .district(profileDto.getDistrict())
-                .occupation(profileDto.getOccupation())
-                .annualIncome(profileDto.getAnnualIncome())
-                .educationLevel(profileDto.getEducationLevel())
-                .category(profileDto.getCategory())
-                .disabilityStatus(profileDto.getDisabilityStatus())
-                .landOwnership(profileDto.getLandOwnership())
-                .employmentStatus(profileDto.getEmploymentStatus())
-                .residenceType(profileDto.getResidenceType())
-                .bplStatus(profileDto.getBplStatus())
-                .build();
-
+        // Create transient detached profile from DTO with all demographic/socioeconomic fields
+        CitizenProfile demoProfile = CitizenProfileService.toTransientEntity(profileDto);
         EligibilityResultDto result = eligibilityEngine.evaluate(scheme, demoProfile);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/eligibility/all")
+    public ResponseEntity<ApiResponse<List<EligibilityResultDto>>> checkDemoAllEligibility(
+            @Valid @RequestBody(required = false) CitizenProfileDto profileDto) {
+        CitizenProfile demoProfile = CitizenProfileService.toTransientEntity(profileDto);
+        List<EligibilityResultDto> results = eligibilityEngine.evaluateAll(demoProfile);
+        return ResponseEntity.ok(ApiResponse.success(results));
     }
 
     @GetMapping("/profiles")

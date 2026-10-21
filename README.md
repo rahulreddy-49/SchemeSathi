@@ -30,7 +30,7 @@ graph TD
         Controllers --> Services[Business Services]
         RuleEngine --> JPA[Spring Data JPA]
         Services --> JPA
-        JPA --> Database[(H2 Database / Seeded Statutory Data)]
+        JPA --> Database[(PostgreSQL Database / Flyway Migrations)]
     end
 ```
 
@@ -83,11 +83,12 @@ graph TD
 ## 🛠️ Technology Stack
 
 ### Backend
-- **Framework**: Spring Boot 3.2.5 (Java 17+, tested through Java 26)
+- **Framework**: Spring Boot 3.3.6 (Java 17+)
 - **Security**: Spring Security 6 with stateless JWT (jjwt 0.12.5) & BCrypt password hashing
 - **Persistence**: Spring Data JPA / Hibernate 6
-- **Database**: H2 in-memory/file database (`data/schemesathi`)
-- **Architecture**: Portable Pure Java POJO design (zero external annotation-processor dependencies)
+- **Database**: PostgreSQL 15+ / 16+ (Production / Development)
+- **Database Migrations**: Flyway 10+ (`db/migration/V1__initial_schema.sql`)
+- **Testing**: JUnit 5, Spring Security Test, AssertJ, H2 in-memory (PostgreSQL-compatibility mode)
 
 ### Frontend
 - **Framework**: React 19 + Vite 8
@@ -132,9 +133,19 @@ SchemeSathi/
 │   │   │       ├── SchemeService.java
 │   │   │       ├── CitizenProfileService.java
 │   │   │       ├── AuthService.java
-│   │   │       └── DataSeeder.java              # 10 verified schemes & admin
+│   │   │       └── DataSeeder.java              # 10 verified statutory schemes
 │   │   └── resources/
-│   │       └── application.properties # Server & DB Configuration
+│   │       ├── application.properties # PostgreSQL & application configuration
+│   │       └── db/migration/
+│   │           └── V1__initial_schema.sql # Flyway baseline schema migration
+│   ├── src/test/
+│   │   ├── java/com/schemesathi/
+│   │   │   ├── database/FlywayMigrationAndSchemaTest.java
+│   │   │   ├── security/SecurityRouteRulesTest.java
+│   │   │   ├── security/JwtTokenProviderTest.java
+│   │   │   └── service/DataSeederSecurityTest.java
+│   │   └── resources/
+│   │       └── application.properties # Isolated test config (Flyway + validation)
 │   └── .mvn/ / mvnw.cmd               # Maven build wrapper
 └── frontend/
     ├── package.json                   # React dependencies
@@ -156,8 +167,65 @@ SchemeSathi/
             ├── AiAssistantPage.jsx    # AI Sahayak chat interface
             ├── DemoPage.jsx           # Sandbox with 3 synthetic personas
             ├── ProfilePage.jsx        # Citizen profile & saved schemes
-            ├── LoginPage.jsx          # Login with 1-click admin demo fill
+            ├── LoginPage.jsx          # Secure login form
             └── RegisterPage.jsx       # Citizen registration form
+```
+
+---
+
+## 🗄️ Database Setup & Flyway Migrations
+
+SchemeSathi uses **PostgreSQL** as its enterprise-grade production relational database, managed via **Flyway** version-controlled migrations.
+
+### 1. Local PostgreSQL Setup
+Install PostgreSQL 15+ locally or launch via Docker:
+```bash
+# Using Docker:
+docker run --name schemesathi-postgres -e POSTGRES_DB=schemesathi -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16-alpine
+
+# Or using local psql CLI:
+createdb schemesathi
+```
+
+### 2. Environment Variables Configuration
+Configure datasource credentials via environment variables:
+
+| Variable | Description | Default (Local Dev) |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC connection URL | `jdbc:postgresql://localhost:5432/schemesathi` |
+| `SPRING_DATASOURCE_USERNAME` | Database username | `postgres` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `postgres` |
+| `JWT_SECRET` | 256-bit HMAC signing secret | Default dev secret (change in prod) |
+| `APP_SEED_DEMO_USERS` | Seed demo accounts on startup | `false` (strictly disabled in prod) |
+| `PORT` | Web server port | `8080` (dynamically assigned on Render) |
+
+### 3. Flyway Migration Lifecycle
+- On application startup, Flyway automatically discovers and applies versioned scripts located in `src/main/resources/db/migration/`.
+- `V1__initial_schema.sql` creates all relational tables (`users`, `schemes`, `eligibility_rules`, `required_documents`, `citizen_profiles`, `citizen_documents`, `saved_schemes`), foreign keys with cascading actions, and database indexes.
+- Hibernate runs in validation mode (`spring.jpa.hibernate.ddl-auto=validate`) to verify entity mappings against the Flyway schema without competing for DDL modifications.
+
+### 4. Running Backend Tests
+Execute the comprehensive test suite (including Flyway migrations, JPA entity validation, security route access, and demo user restrictions):
+```bash
+cd backend
+mvn test
+```
+Tests run against an in-memory test database in PostgreSQL-compatibility mode (`MODE=PostgreSQL`), executing `V1__initial_schema.sql` and performing full JPA validation.
+
+### 5. Production Deployment (e.g., Render)
+1. In your Render Dashboard, create a **PostgreSQL Database** service.
+2. In your SchemeSathi Web Service settings, set the following environment variables:
+   - `SPRING_DATASOURCE_URL`: Use the external or internal JDBC connection string provided by Render (e.g., `jdbc:postgresql://<hostname>:5432/<dbname>`).
+   - `SPRING_DATASOURCE_USERNAME`: Render database user.
+   - `SPRING_DATASOURCE_PASSWORD`: Render database password.
+   - `JWT_SECRET`: A secure, random 256-bit string.
+   - `APP_SEED_DEMO_USERS`: `false`
+3. Deploy the service. Flyway will execute the schema migrations automatically on initial startup.
+
+### 6. Database Backups
+Before deploying future schema migrations, always capture a point-in-time backup:
+```bash
+pg_dump -h <host> -U <user> -d schemesathi -F c -b -v -f "schemesathi_backup_$(date +%Y%m%d).dump"
 ```
 
 ---
@@ -165,9 +233,10 @@ SchemeSathi/
 ## ⚡ Quick Start Guide
 
 ### Prerequisites
-- **Java**: JDK 17 or higher (compatible up to JDK 26)
+- **Java**: JDK 17 or higher
 - **Node.js**: v18.0 or higher with `npm`
 - **Maven**: Bundled Maven wrapper or Maven 3.8+
+- **PostgreSQL**: Local PostgreSQL 15+ or Docker
 
 ---
 
@@ -185,7 +254,7 @@ mvn spring-boot:run
 ```
 
 The backend server starts on **`http://localhost:8080`**.  
-On initial startup, `DataSeeder` automatically populates the H2 database with **10 verified schemes** and the **default admin user**.
+On initial startup, Flyway runs `V1__initial_schema.sql`, and `DataSeeder` initializes statutory scheme definitions.
 
 ---
 

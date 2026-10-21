@@ -1,26 +1,70 @@
 package com.schemesathi.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+
 public class CitizenProfileDto {
     private Long id;
+
+    @Min(value = 0, message = "Age cannot be negative")
+    @Max(value = 130, message = "Age must be valid (130 or below)")
     private Integer age;
+
+    @Size(max = 20, message = "Gender length must not exceed 20 characters")
     private String gender;
+
+    @Size(max = 50, message = "State length must not exceed 50 characters")
     private String state;
+
+    @Size(max = 100, message = "District length must not exceed 100 characters")
     private String district;
+
+    @Size(max = 100, message = "Occupation length must not exceed 100 characters")
     private String occupation;
+
+    @PositiveOrZero(message = "Annual income cannot be negative")
     private Double annualIncome;
+
+    @Size(max = 50, message = "Education level length must not exceed 50 characters")
     private String educationLevel;
+
+    @Size(max = 30, message = "Category length must not exceed 30 characters")
     private String category;
+
     private Boolean disabilityStatus;
+
+    @Size(max = 50, message = "Disability type length must not exceed 50 characters")
     private String disabilityType;
+
+    @Min(value = 0, message = "Disability percentage cannot be negative")
+    @Max(value = 100, message = "Disability percentage cannot exceed 100")
     private Integer disabilityPercentage;
+
     private Boolean landOwnership;
+
+    @PositiveOrZero(message = "Land area cannot be negative")
     private Double landArea;
+
+    @Size(max = 30, message = "Employment status length must not exceed 30 characters")
     private String employmentStatus;
+
+    @Size(max = 30, message = "Residence type length must not exceed 30 characters")
     private String residenceType;
+
+    @Size(max = 30, message = "Marital status length must not exceed 30 characters")
     private String maritalStatus;
+
+    @Min(value = 1, message = "Family size must be at least 1")
+    @Max(value = 50, message = "Family size must be 50 or below")
     private Integer familySize;
+
     private Boolean bplStatus;
+
+    @Size(max = 30, message = "Ration card type length must not exceed 30 characters")
     private String rationCardType;
+
     private Boolean minorityStatus;
     private Boolean exServiceman;
     private Integer completenessPercentage;

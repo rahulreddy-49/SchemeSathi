@@ -44,6 +44,7 @@ public class EligibilityEngine {
         int passCount = 0;
         int failCount = 0;
         int missingCount = 0;
+        int needsVerificationCount = 0;
         int totalMandatory = 0;
 
         for (EligibilityRule rule : scheme.getEligibilityRules()) {
@@ -60,7 +61,7 @@ public class EligibilityEngine {
                         missingInfo.add(result.getDisplayLabel() != null ?
                             result.getDisplayLabel() : result.getCriterionName());
                     }
-                    case NEEDS_VERIFICATION -> {}
+                    case NEEDS_VERIFICATION -> needsVerificationCount++;
                 }
             }
         }
@@ -89,6 +90,9 @@ public class EligibilityEngine {
                 status = EligibilityStatus.INSUFFICIENT_INFORMATION;
                 matchScore = 0;
             }
+        } else if (needsVerificationCount > 0) {
+            status = EligibilityStatus.REQUIRES_OFFICIAL_VERIFICATION;
+            matchScore = Math.round((passCount * 100.0) / totalMandatory);
         } else {
             status = EligibilityStatus.ELIGIBLE;
             matchScore = 100.0;
@@ -120,11 +124,11 @@ public class EligibilityEngine {
         String operator = rule.getOperator();
         String requiredValue = rule.getValue();
 
-        String displayLabel = rule.getDisplayLabel() != null ? rule.getDisplayLabel() : formatFieldName(field);
+        String displayLabel = rule.getDisplayLabel() != null ? rule.getDisplayLabel() : formatFieldName(field != null ? field : "Criterion");
         String citizenValueStr = citizenValue != null ? String.valueOf(citizenValue) : "Not provided";
 
-        // Handle missing data
-        if (citizenValue == null || citizenValueStr.isEmpty()) {
+        // Handle missing or blank data
+        if (citizenValue == null || citizenValue.toString().trim().isEmpty()) {
             return CriterionResult.builder()
                     .criterionName(field)
                     .displayLabel(displayLabel)
@@ -132,6 +136,32 @@ public class EligibilityEngine {
                     .requiredValue(formatRequiredValue(operator, requiredValue))
                     .status(CriterionStatus.MISSING)
                     .explanation("This information is not available in your profile. Please update your profile.")
+                    .build();
+        }
+
+        // Check if operator is recognized and valid
+        if (operator == null || !isSupportedOperator(operator)) {
+            log.warn("Rule with unsupported or unknown operator: '{}' for field '{}'", operator, field);
+            return CriterionResult.builder()
+                    .criterionName(field)
+                    .displayLabel(displayLabel)
+                    .citizenValue(citizenValueStr)
+                    .requiredValue(formatRequiredValue(operator, requiredValue))
+                    .status(CriterionStatus.NEEDS_VERIFICATION)
+                    .explanation("This criterion requires departmental or manual verification (unsupported operator: " + operator + ").")
+                    .build();
+        }
+
+        // Handle malformed requiredValue for BETWEEN
+        if ("BETWEEN".equalsIgnoreCase(operator.trim()) && !isValidBetweenValue(requiredValue)) {
+            log.warn("Rule with malformed BETWEEN value: '{}' for field '{}'", requiredValue, field);
+            return CriterionResult.builder()
+                    .criterionName(field)
+                    .displayLabel(displayLabel)
+                    .citizenValue(citizenValueStr)
+                    .requiredValue(requiredValue != null ? requiredValue : "")
+                    .status(CriterionStatus.NEEDS_VERIFICATION)
+                    .explanation("Criterion rule definition is incomplete or malformed. Official verification required.")
                     .build();
         }
 
@@ -150,43 +180,117 @@ public class EligibilityEngine {
     }
 
     /**
+     * Checks if operator is recognized by the engine.
+     */
+    private boolean isSupportedOperator(String operator) {
+        if (operator == null) return false;
+        return switch (operator.trim().toUpperCase()) {
+            case "EQ", "NEQ", "LT", "LTE", "GT", "GTE", "BETWEEN", "IN", "NOT_IN", "BOOL", "EXISTS" -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * Validates that a BETWEEN rule has two valid numeric boundaries.
+     */
+    private boolean isValidBetweenValue(String value) {
+        if (value == null || value.trim().isEmpty()) return false;
+        String val = value.trim();
+        String[] parts;
+        if (val.contains(":")) {
+            parts = val.split(":");
+        } else if (val.contains(" to ")) {
+            parts = val.split(" to ");
+        } else if (val.contains("..")) {
+            parts = val.split("\\.\\.");
+        } else if (val.contains("-") && val.indexOf('-') > 0) {
+            parts = val.split("-");
+        } else {
+            return false;
+        }
+        if (parts.length < 2) return false;
+        return isNumeric(parts[0].trim()) && isNumeric(parts[1].trim());
+    }
+
+    /**
      * Evaluates a condition based on operator type.
      */
     private boolean evaluateCondition(Object citizenValue, String operator, String requiredValue) {
+        if (operator == null || requiredValue == null) return false;
         try {
-            return switch (operator.toUpperCase()) {
-                case "EQ" -> String.valueOf(citizenValue).equalsIgnoreCase(requiredValue);
-                case "NEQ" -> !String.valueOf(citizenValue).equalsIgnoreCase(requiredValue);
+            return switch (operator.trim().toUpperCase()) {
+                case "EQ" -> {
+                    if (citizenValue instanceof Number || isNumeric(String.valueOf(citizenValue))) {
+                        if (isNumeric(requiredValue)) {
+                            yield Math.abs(toDouble(citizenValue) - toDouble(requiredValue)) < 0.0001;
+                        }
+                    }
+                    yield String.valueOf(citizenValue).trim().equalsIgnoreCase(requiredValue.trim());
+                }
+                case "NEQ" -> {
+                    if (citizenValue instanceof Number || isNumeric(String.valueOf(citizenValue))) {
+                        if (isNumeric(requiredValue)) {
+                            yield Math.abs(toDouble(citizenValue) - toDouble(requiredValue)) >= 0.0001;
+                        }
+                    }
+                    yield !String.valueOf(citizenValue).trim().equalsIgnoreCase(requiredValue.trim());
+                }
                 case "LT" -> toDouble(citizenValue) < toDouble(requiredValue);
                 case "LTE" -> toDouble(citizenValue) <= toDouble(requiredValue);
                 case "GT" -> toDouble(citizenValue) > toDouble(requiredValue);
                 case "GTE" -> toDouble(citizenValue) >= toDouble(requiredValue);
                 case "IN" -> {
-                    String val = String.valueOf(citizenValue).toLowerCase();
+                    String val = String.valueOf(citizenValue).trim().toLowerCase();
+                    boolean isNum = isNumeric(val);
+                    double numVal = isNum ? toDouble(citizenValue) : 0.0;
                     yield Arrays.stream(requiredValue.split(","))
                             .map(String::trim)
-                            .map(String::toLowerCase)
-                            .anyMatch(v -> v.equals(val));
+                            .anyMatch(v -> {
+                                if (isNum && isNumeric(v)) {
+                                    return Math.abs(numVal - toDouble(v)) < 0.0001;
+                                }
+                                return v.equalsIgnoreCase(val);
+                            });
                 }
                 case "NOT_IN" -> {
-                    String val2 = String.valueOf(citizenValue).toLowerCase();
+                    String val2 = String.valueOf(citizenValue).trim().toLowerCase();
+                    boolean isNum = isNumeric(val2);
+                    double numVal = isNum ? toDouble(citizenValue) : 0.0;
                     yield Arrays.stream(requiredValue.split(","))
                             .map(String::trim)
-                            .map(String::toLowerCase)
-                            .noneMatch(v -> v.equals(val2));
+                            .noneMatch(v -> {
+                                if (isNum && isNumeric(v)) {
+                                    return Math.abs(numVal - toDouble(v)) < 0.0001;
+                                }
+                                return v.equalsIgnoreCase(val2);
+                            });
                 }
                 case "BETWEEN" -> {
-                    String[] parts = requiredValue.split(":");
+                    String val = requiredValue.trim();
+                    String[] parts;
+                    if (val.contains(":")) {
+                        parts = val.split(":");
+                    } else if (val.contains(" to ")) {
+                        parts = val.split(" to ");
+                    } else if (val.contains("..")) {
+                        parts = val.split("\\.\\.");
+                    } else {
+                        parts = val.split("-");
+                    }
+                    double min = toDouble(parts[0].trim());
+                    double max = toDouble(parts[1].trim());
+                    double low = Math.min(min, max);
+                    double high = Math.max(min, max);
                     double cv = toDouble(citizenValue);
-                    yield cv >= toDouble(parts[0]) && cv <= toDouble(parts[1]);
+                    yield cv >= low && cv <= high;
                 }
                 case "BOOL" -> {
-                    boolean expected = Boolean.parseBoolean(requiredValue);
-                    boolean actual = citizenValue instanceof Boolean ? (Boolean) citizenValue
-                            : Boolean.parseBoolean(String.valueOf(citizenValue));
+                    boolean expected = parseBooleanSafely(requiredValue);
+                    boolean actual = citizenValue instanceof Boolean b ? b
+                            : parseBooleanSafely(String.valueOf(citizenValue));
                     yield expected == actual;
                 }
-                case "EXISTS" -> citizenValue != null && !String.valueOf(citizenValue).isEmpty();
+                case "EXISTS" -> citizenValue != null && !String.valueOf(citizenValue).trim().isEmpty();
                 default -> {
                     log.warn("Unknown operator: {}", operator);
                     yield false;
@@ -199,32 +303,50 @@ public class EligibilityEngine {
         }
     }
 
+    private boolean parseBooleanSafely(String str) {
+        if (str == null) return false;
+        String trimmed = str.trim().toLowerCase();
+        return "true".equals(trimmed) || "yes".equals(trimmed) || "1".equals(trimmed) || "y".equals(trimmed);
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null) return false;
+        try {
+            Double.parseDouble(str.trim());
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     /**
      * Extracts a profile field value by name using reflection-free approach.
      */
     private Object getProfileField(CitizenProfile profile, String field) {
-        if (profile == null) return null;
-        return switch (field.toLowerCase()) {
+        if (profile == null || field == null) return null;
+        String normalized = field.trim().toLowerCase().replaceAll("[_\\-\\s]", "");
+        return switch (normalized) {
             case "age" -> profile.getAge();
             case "gender" -> profile.getGender();
             case "state" -> profile.getState();
             case "district" -> profile.getDistrict();
             case "occupation" -> profile.getOccupation();
-            case "annualincome", "annual_income", "income" -> profile.getAnnualIncome();
-            case "educationlevel", "education_level", "education" -> profile.getEducationLevel();
+            case "annualincome", "income" -> profile.getAnnualIncome();
+            case "educationlevel", "education" -> profile.getEducationLevel();
             case "category" -> profile.getCategory();
-            case "disabilitystatus", "disability_status", "disability" -> profile.getDisabilityStatus();
-            case "disabilitypercentage", "disability_percentage" -> profile.getDisabilityPercentage();
-            case "landownership", "land_ownership" -> profile.getLandOwnership();
-            case "landarea", "land_area" -> profile.getLandArea();
-            case "employmentstatus", "employment_status", "employment" -> profile.getEmploymentStatus();
-            case "residencetype", "residence_type", "residence" -> profile.getResidenceType();
-            case "maritalstatus", "marital_status" -> profile.getMaritalStatus();
-            case "familysize", "family_size" -> profile.getFamilySize();
-            case "bplstatus", "bpl_status", "bpl" -> profile.getBplStatus();
-            case "rationcardtype", "ration_card_type" -> profile.getRationCardType();
-            case "minoritystatus", "minority_status", "minority" -> profile.getMinorityStatus();
-            case "exserviceman", "ex_serviceman" -> profile.getExServiceman();
+            case "disabilitystatus", "disability" -> profile.getDisabilityStatus();
+            case "disabilitypercentage" -> profile.getDisabilityPercentage();
+            case "disabilitytype" -> profile.getDisabilityType();
+            case "landownership" -> profile.getLandOwnership();
+            case "landarea" -> profile.getLandArea();
+            case "employmentstatus", "employment" -> profile.getEmploymentStatus();
+            case "residencetype", "residence" -> profile.getResidenceType();
+            case "maritalstatus" -> profile.getMaritalStatus();
+            case "familysize" -> profile.getFamilySize();
+            case "bplstatus", "bpl" -> profile.getBplStatus();
+            case "rationcardtype" -> profile.getRationCardType();
+            case "minoritystatus", "minority" -> profile.getMinorityStatus();
+            case "exserviceman" -> profile.getExServiceman();
             default -> {
                 log.warn("Unknown profile field: {}", field);
                 yield null;
@@ -238,6 +360,7 @@ public class EligibilityEngine {
     }
 
     private String formatFieldName(String field) {
+        if (field == null || field.trim().isEmpty()) return "Criterion";
         StringBuilder sb = new StringBuilder();
         for (char c : field.toCharArray()) {
             if (Character.isUpperCase(c) && !sb.isEmpty()) {
@@ -249,7 +372,9 @@ public class EligibilityEngine {
     }
 
     private String formatRequiredValue(String operator, String value) {
-        return switch (operator.toUpperCase()) {
+        if (operator == null) return value != null ? value : "";
+        if (value == null) return "";
+        return switch (operator.trim().toUpperCase()) {
             case "LTE" -> "≤ " + value;
             case "GTE" -> "≥ " + value;
             case "LT" -> "< " + value;
@@ -258,8 +383,8 @@ public class EligibilityEngine {
             case "NEQ" -> "Not " + value;
             case "IN" -> "One of: " + value;
             case "NOT_IN" -> "Not: " + value;
-            case "BETWEEN" -> value.replace(":", " to ");
-            case "BOOL" -> Boolean.parseBoolean(value) ? "Yes" : "No";
+            case "BETWEEN" -> value.replace(":", " to ").replace("..", " to ");
+            case "BOOL" -> parseBooleanSafely(value) ? "Yes" : "No";
             case "EXISTS" -> "Must be provided";
             default -> value;
         };
@@ -268,15 +393,15 @@ public class EligibilityEngine {
     private String generateExplanation(EligibilityStatus status, int pass, int fail, int missing, int total, String schemeName) {
         return switch (status) {
             case ELIGIBLE -> String.format(
-                "You meet all %d eligibility criteria for %s. Please ensure you have all required documents ready before applying.", total, schemeName);
+                "You meet all %d evaluated statutory criteria for %s based on submitted information. Official verification by competent government authorities is required prior to benefit disbursement.", total, schemeName);
             case PROBABLY_ELIGIBLE -> String.format(
-                "You meet %d of %d verified criteria for %s. %d criteria could not be verified due to missing profile information. Update your profile for a complete assessment.", pass, total, schemeName, missing);
+                "You meet %d of %d verified criteria for %s. %d criteria could not be verified due to missing information. Complete all required fields for a definitive check.", pass, total, schemeName, missing);
             case NOT_ELIGIBLE -> String.format(
-                "You do not meet %d of %d criteria for %s. Review the failed criteria below for details.", fail, total, schemeName);
+                "You do not meet %d of %d statutory criteria for %s. Review the failed criteria below for specific requirements.", fail, total, schemeName);
             case INSUFFICIENT_INFORMATION -> String.format(
-                "We cannot determine your eligibility for %s because essential profile information is missing. Please complete your profile.", schemeName);
+                "Eligibility for %s cannot be determined because essential criteria values were not provided. Please provide the required information.", schemeName);
             case REQUIRES_OFFICIAL_VERIFICATION ->
-                "This scheme requires official verification. Please contact the relevant government authority for eligibility confirmation.";
+                "This scheme requires official in-person or departmental verification. Please consult the competent authority or official portal.";
         };
     }
 
@@ -284,7 +409,9 @@ public class EligibilityEngine {
      * Evaluates eligibility for all applicable schemes for a citizen.
      */
     public List<EligibilityResultDto> evaluateAll(CitizenProfile profile) {
-        String state = profile != null ? profile.getState() : null;
+        String state = (profile != null && profile.getState() != null && !profile.getState().trim().isEmpty())
+                ? profile.getState().trim()
+                : null;
         List<Scheme> schemes = state != null
                 ? schemeRepository.findApplicableSchemes(state)
                 : schemeRepository.findByActiveTrue();

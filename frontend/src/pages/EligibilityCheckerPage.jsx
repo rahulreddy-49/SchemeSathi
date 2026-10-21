@@ -10,7 +10,8 @@ import {
   Sparkles, 
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function EligibilityCheckerPage() {
@@ -41,6 +42,8 @@ export default function EligibilityCheckerPage() {
   const [results, setResults] = useState([]);
   const [expandedSchemeId, setExpandedSchemeId] = useState(null);
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, ELIGIBLE, POTENTIAL
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Prepopulate if logged-in user profile exists
   useEffect(() => {
@@ -59,39 +62,45 @@ export default function EligibilityCheckerPage() {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
+      [name]: type === 'checkbox' ? checked : (type === 'number' ? (value === '' ? '' : Number(value)) : value)
     }));
   };
 
   const handleRunAssessment = async (e) => {
     if (e) e.preventDefault();
+    if (loading) return; // Prevent duplicate concurrent submissions
+
     setLoading(true);
-    setResults([]);
+    setErrorMessage(null);
+
+    // Format clean payload with numeric conversions
+    const payload = {
+      ...formData,
+      age: formData.age !== '' && formData.age !== null ? Number(formData.age) : null,
+      annualIncome: formData.annualIncome !== '' && formData.annualIncome !== null ? Number(formData.annualIncome) : null,
+      landArea: formData.landOwnership && formData.landArea !== '' && formData.landArea !== null ? Number(formData.landArea) : 0,
+      familySize: formData.familySize !== '' && formData.familySize !== null ? Number(formData.familySize) : null,
+      disabilityPercentage: formData.disabilityStatus && formData.disabilityPercentage !== '' && formData.disabilityPercentage !== null ? Number(formData.disabilityPercentage) : 0
+    };
 
     try {
-      if (user) {
-        // Authenticated assessment
-        const res = await schemesApi.checkAllEligibility();
-        if (res.data?.success) {
-          setResults(res.data.data);
-        }
+      const res = user
+        ? await schemesApi.evaluateAllCriteria(payload)
+        : await demoApi.checkAllEligibility(payload);
+
+      if (res.data?.success) {
+        setResults(res.data.data || []);
+        setHasSubmitted(true);
+        setErrorMessage(null);
       } else {
-        // Unauthenticated demo evaluation across schemes
-        const schemesRes = await demoApi.getSchemes();
-        if (schemesRes.data?.success) {
-          const list = schemesRes.data.data;
-          const evalPromises = list.map(s => demoApi.checkEligibility(s.id, formData));
-          const responses = await Promise.all(evalPromises);
-          const allResults = responses
-            .map(r => r.data?.data)
-            .filter(Boolean)
-            .sort((a, b) => b.matchScore - a.matchScore);
-          setResults(allResults);
-        }
+        setResults([]);
+        setErrorMessage(res.data?.message || 'Assessment could not be completed.');
       }
     } catch (err) {
-      console.error(err);
-      alert('Error evaluating schemes. Please ensure values are valid.');
+      console.error('Eligibility evaluation error:', err);
+      setResults([]);
+      const msg = err.response?.data?.message || 'Error evaluating schemes. Please ensure all values are valid.';
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -280,6 +289,23 @@ export default function EligibilityCheckerPage() {
               </div>
             </div>
 
+            {errorMessage && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#f87171',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -302,16 +328,30 @@ export default function EligibilityCheckerPage() {
 
         {/* RESULTS SECTION */}
         <div>
-          {results.length === 0 ? (
+          {loading ? (
+            <div className="glass-card" style={{ padding: '60px 24px', textAlign: 'center' }}>
+              <RefreshCw size={48} color="var(--primary)" className="spin" style={{ marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '1.4rem', marginBottom: '10px' }}>Analyzing Welfare Schemes</h3>
+              <p style={{ color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto', fontSize: '0.92rem' }}>
+                Evaluating your criteria against codified statutory rules in real time...
+              </p>
+            </div>
+          ) : results.length === 0 ? (
             <div className="glass-card" style={{ padding: '60px 24px', textAlign: 'center' }}>
               <Sparkles size={48} color="var(--primary)" style={{ marginBottom: '16px' }} />
-              <h3 style={{ fontSize: '1.4rem', marginBottom: '10px' }}>Ready for Instant Assessment</h3>
+              <h3 style={{ fontSize: '1.4rem', marginBottom: '10px' }}>
+                {hasSubmitted ? 'No Matching Schemes Found' : 'Ready for Instant Assessment'}
+              </h3>
               <p style={{ color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 24px', fontSize: '0.92rem' }}>
-                Click "Evaluate My Eligibility" to see which of India's flagship central and state schemes you qualify for.
+                {hasSubmitted
+                  ? 'No schemes match the criteria provided. Review your entries or adjust parameters.'
+                  : 'Click "Evaluate My Eligibility" to see which of India\'s flagship central and state schemes you qualify for.'}
               </p>
-              <button onClick={handleRunAssessment} className="btn btn-secondary btn-sm">
-                Run Assessment Now
-              </button>
+              {!hasSubmitted && (
+                <button onClick={handleRunAssessment} className="btn btn-secondary btn-sm">
+                  Run Assessment Now
+                </button>
+              )}
             </div>
           ) : (
             <div>
@@ -441,6 +481,10 @@ export default function EligibilityCheckerPage() {
                               ) : rule.status === 'FAIL' ? (
                                 <span style={{ color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <XCircle size={14} /> Fail
+                                </span>
+                              ) : rule.status === 'NEEDS_VERIFICATION' ? (
+                                <span style={{ color: '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <ShieldCheck size={14} /> Verification Req.
                                 </span>
                               ) : (
                                 <span style={{ color: '#fbbf24', fontWeight: 600 }}>Missing</span>

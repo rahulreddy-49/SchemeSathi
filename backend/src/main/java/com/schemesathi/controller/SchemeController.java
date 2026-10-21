@@ -1,6 +1,7 @@
 package com.schemesathi.controller;
 
 import com.schemesathi.dto.ApiResponse;
+import com.schemesathi.dto.CitizenProfileDto;
 import com.schemesathi.dto.EligibilityResultDto;
 import com.schemesathi.dto.SchemeDto;
 import com.schemesathi.entity.CitizenProfile;
@@ -8,6 +9,7 @@ import com.schemesathi.entity.Scheme;
 import com.schemesathi.entity.SavedScheme;
 import com.schemesathi.entity.User;
 import com.schemesathi.repository.SchemeRepository;
+import jakarta.validation.Valid;
 import com.schemesathi.repository.SavedSchemeRepository;
 import com.schemesathi.service.CitizenProfileService;
 import com.schemesathi.service.EligibilityEngine;
@@ -106,6 +108,44 @@ public class SchemeController {
 
         CitizenProfile profile = profileService.getProfileEntity(user);
         List<EligibilityResultDto> results = eligibilityEngine.evaluateAll(profile);
+        return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
+    @PostMapping("/{id}/eligibility")
+    public ResponseEntity<ApiResponse<EligibilityResultDto>> evaluateSchemeWithCriteria(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CitizenProfileDto profileDto,
+            @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
+        Scheme scheme = schemeRepository.findById(id).orElse(null);
+        if (scheme == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        CitizenProfile profileToEvaluate = profileDto != null
+                ? CitizenProfileService.toTransientEntity(profileDto)
+                : profileService.getProfileEntity(user);
+
+        EligibilityResultDto result = eligibilityEngine.evaluate(scheme, profileToEvaluate);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/eligibility/all")
+    public ResponseEntity<ApiResponse<List<EligibilityResultDto>>> evaluateAllWithCriteria(
+            @Valid @RequestBody(required = false) CitizenProfileDto profileDto,
+            @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
+        CitizenProfile profileToEvaluate = profileDto != null
+                ? CitizenProfileService.toTransientEntity(profileDto)
+                : profileService.getProfileEntity(user);
+
+        List<EligibilityResultDto> results = eligibilityEngine.evaluateAll(profileToEvaluate);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
 

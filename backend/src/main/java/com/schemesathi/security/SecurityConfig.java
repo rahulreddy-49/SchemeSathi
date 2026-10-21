@@ -81,6 +81,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/schemes/*/eligibility").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/schemes/*/save").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/schemes/*/save").authenticated()
+                    .requestMatchers("/api/applications", "/api/applications/**").authenticated()
 
                     // Public scheme browsing
                     .requestMatchers(HttpMethod.GET, "/api/schemes", "/api/schemes/").permitAll()

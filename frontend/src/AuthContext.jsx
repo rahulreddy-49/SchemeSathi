@@ -17,6 +17,25 @@ function getInitialUser() {
   return null;
 }
 
+function extractErrorMessage(err, fallback) {
+  if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+    return 'Unable to reach backend server. Please verify that the backend is running on port 8080.';
+  }
+  if (err.response?.status === 500 && typeof err.response?.data === 'string' && (err.response.data.includes('ECONNREFUSED') || err.response.data.includes('Proxy error'))) {
+    return 'Backend server is unreachable on port 8080 (Connection Refused). Please ensure the backend is running.';
+  }
+  if (err.response?.data?.message) {
+    return err.response.data.message;
+  }
+  if (err.response?.data?.error) {
+    return err.response.data.error;
+  }
+  if (typeof err.response?.data === 'string' && !err.response.data.startsWith('<')) {
+    return err.response.data;
+  }
+  return err.message || fallback;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getInitialUser);
   const [profile, setProfile] = useState(null);
@@ -59,8 +78,7 @@ export function AuthProvider({ children }) {
       }
       throw new Error(res.data?.message || 'Login failed');
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Login failed';
-      throw new Error(message);
+      throw new Error(extractErrorMessage(err, 'Login failed'));
     }
   };
 
@@ -76,8 +94,7 @@ export function AuthProvider({ children }) {
       }
       throw new Error(res.data?.message || 'Registration failed');
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Registration failed';
-      throw new Error(message);
+      throw new Error(extractErrorMessage(err, 'Registration failed'));
     }
   };
 

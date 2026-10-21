@@ -29,6 +29,11 @@
       "name": "app.cors.allowed-origins",
       "type": "java.lang.String",
       "description": "Comma-separated list of permitted CORS web origins."
+    },
+    {
+      "name": "app.seed.demo-users",
+      "type": "java.lang.Boolean",
+      "description": "Flag to enable demo user account seeding in development mode."
     }
   ]
 }

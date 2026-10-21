@@ -73,6 +73,17 @@ export const householdApi = {
   checkSchemeEligibility: (id, schemeId) => api.get(`/household/${id}/eligibility/${schemeId}`)
 };
 
+// Scheme Application Tracking API
+export const applicationsApi = {
+  getAll: () => api.get('/applications'),
+  getSummary: () => api.get('/applications/summary'),
+  getById: (id) => api.get(`/applications/${id}`),
+  create: (data) => api.post('/applications', data),
+  update: (id, data) => api.put(`/applications/${id}`, data),
+  delete: (id) => api.delete(`/applications/${id}`),
+  getByScheme: (schemeId) => api.get(`/applications/scheme/${schemeId}`)
+};
+
 // AI API
 export const aiApi = {
   chat: (message, conversationId) => api.post('/ai/chat', { message, conversationId })

@@ -42,16 +42,24 @@ public class FlywayMigrationAndSchemaTest {
     @Autowired
     private HouseholdMemberRepository householdMemberRepository;
 
+    @Autowired
+    private SchemeApplicationRepository schemeApplicationRepository;
+
+    @Autowired
+    private SchemeApplicationHistoryRepository schemeApplicationHistoryRepository;
+
     @Test
     @DisplayName("Flyway migrations should be discovered and executed successfully")
     void flywayMigrationsShouldExecuteSuccessfully() {
         assertThat(flyway).isNotNull();
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertThat(appliedMigrations).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(appliedMigrations).hasSizeGreaterThanOrEqualTo(3);
         assertThat(appliedMigrations[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(appliedMigrations[0].getDescription()).containsIgnoringCase("initial schema");
         assertThat(appliedMigrations[1].getVersion().getVersion()).isEqualTo("2");
         assertThat(appliedMigrations[1].getDescription()).containsIgnoringCase("household members");
+        assertThat(appliedMigrations[2].getVersion().getVersion()).isEqualTo("3");
+        assertThat(appliedMigrations[2].getDescription()).containsIgnoringCase("application tracking");
     }
 
     @Test
@@ -283,5 +291,52 @@ public class FlywayMigrationAndSchemaTest {
         assertThrows(DataIntegrityViolationException.class, () -> {
             householdMemberRepository.saveAndFlush(member2);
         });
+    }
+
+    @Test
+    @DisplayName("Should successfully persist and retrieve SchemeApplication and SchemeApplicationHistory matching Flyway schema")
+    @Transactional
+    void shouldPersistAndRetrieveSchemeApplicationAndHistory() {
+        User user = User.builder()
+                .email("app_test_user@schemesathi.test")
+                .password("SecurePassword123!")
+                .fullName("Citizen Applicant")
+                .role(User.UserRole.CITIZEN)
+                .build();
+        user = userRepository.saveAndFlush(user);
+
+        Scheme scheme = Scheme.builder()
+                .name("Kalyana Lakshmi")
+                .description("Financial assistance for brides")
+                .governmentAuthority("Government of Telangana")
+                .scope(Scheme.SchemeScope.STATE)
+                .state("Telangana")
+                .build();
+        scheme = schemeRepository.saveAndFlush(scheme);
+
+        SchemeApplication app = SchemeApplication.builder()
+                .user(user)
+                .scheme(scheme)
+                .applicantType("SELF")
+                .applicantName("Citizen Applicant")
+                .status(ApplicationStatus.SUBMITTED)
+                .applicationReference("KL-2026-987654")
+                .appliedDate(LocalDate.now())
+                .nextActionDate(LocalDate.now().plusDays(15))
+                .nextActionNotes("Await physical verification from MRO office")
+                .notes("Submitted online via MeeSeva portal")
+                .build();
+
+        app.addHistory(ApplicationStatus.PLANNING, ApplicationStatus.SUBMITTED, "Submitted at MeeSeva center with acknowledgement number", "CITIZEN");
+        app = schemeApplicationRepository.saveAndFlush(app);
+        assertThat(app.getId()).isNotNull();
+
+        Optional<SchemeApplication> found = schemeApplicationRepository.findByIdAndUserIdWithHistory(app.getId(), user.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().getApplicationReference()).isEqualTo("KL-2026-987654");
+        assertThat(found.get().getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
+        assertThat(found.get().getHistory()).hasSize(1);
+        assertThat(found.get().getHistory().get(0).getToStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
+        assertThat(found.get().getHistory().get(0).getInitiatedBy()).isEqualTo("CITIZEN");
     }
 }

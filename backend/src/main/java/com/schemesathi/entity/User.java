@@ -40,6 +40,12 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private java.util.List<HouseholdMember> householdMembers = new java.util.ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private java.util.List<SchemeApplication> applications = new java.util.ArrayList<>();
+
+    public java.util.List<SchemeApplication> getApplications() { return applications; }
+    public void setApplications(java.util.List<SchemeApplication> applications) { this.applications = applications; }
+
     public enum UserRole {
         CITIZEN, ADMIN
     }

@@ -25,7 +25,7 @@ export default function LoginPage() {
       await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      setError(err.message || 'Authentication failed. Please verify your connection.');
     } finally {
       setLoading(false);
     }
@@ -41,9 +41,9 @@ export default function LoginPage() {
 
   const isNotFoundOrUnregistered =
     error.toLowerCase().includes('no account') ||
-    error.toLowerCase().includes('register') ||
-    error.toLowerCase().includes('not found') ||
-    error.toLowerCase().includes('invalid');
+    error.toLowerCase().includes('not registered') ||
+    error.toLowerCase().includes('user not found') ||
+    error.toLowerCase().includes('register as a citizen');
 
   return (
     <div className="container fade-in" style={{ padding: '60px 24px 100px', maxWidth: '480px' }}>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { ShieldCheck, Lock, Mail, User, Phone } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, User, Phone, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -29,11 +29,16 @@ export default function RegisterPage() {
       await register(fullName.trim(), email.trim(), password, phone?.trim() || '');
       navigate('/profile');
     } catch (err) {
-      setError(err.message || 'Registration failed. Email may already be in use.');
+      setError(err.message || 'Registration failed. Please check your details and try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const isAlreadyRegistered =
+    error.toLowerCase().includes('already registered') ||
+    error.toLowerCase().includes('already in use') ||
+    error.toLowerCase().includes('sign in instead');
 
   return (
     <div className="container fade-in" style={{ padding: '60px 24px 100px', maxWidth: '500px' }}>
@@ -66,13 +71,35 @@ export default function RegisterPage() {
           <div style={{
             background: 'rgba(239, 68, 68, 0.12)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: '10px',
-            padding: '10px 14px',
+            borderRadius: '12px',
+            padding: '12px 14px',
             color: '#f87171',
-            fontSize: '0.85rem',
+            fontSize: '0.86rem',
             marginBottom: '20px'
           }}>
-            {error}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ margin: 0, lineHeight: 1.4 }}>{error}</p>
+                {isAlreadyRegistered && (
+                  <Link
+                    to={email.trim() ? `/login?email=${encodeURIComponent(email.trim())}` : '/login'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '8px',
+                      color: '#38bdf8',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    Click here to sign in with {email.trim() || 'this email'} <ArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

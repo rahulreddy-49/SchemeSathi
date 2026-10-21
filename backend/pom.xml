@@ -57,11 +57,11 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-        <!-- H2 Database (Testing only) -->
+        <!-- H2 Database (Testing & Standalone Dev) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- JWT -->

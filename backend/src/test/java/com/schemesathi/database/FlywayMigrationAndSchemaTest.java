@@ -39,14 +39,19 @@ public class FlywayMigrationAndSchemaTest {
     @Autowired
     private SavedSchemeRepository savedSchemeRepository;
 
+    @Autowired
+    private HouseholdMemberRepository householdMemberRepository;
+
     @Test
     @DisplayName("Flyway migrations should be discovered and executed successfully")
     void flywayMigrationsShouldExecuteSuccessfully() {
         assertThat(flyway).isNotNull();
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertThat(appliedMigrations).isNotEmpty();
+        assertThat(appliedMigrations).hasSizeGreaterThanOrEqualTo(2);
         assertThat(appliedMigrations[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(appliedMigrations[0].getDescription()).containsIgnoringCase("initial schema");
+        assertThat(appliedMigrations[1].getVersion().getVersion()).isEqualTo("2");
+        assertThat(appliedMigrations[1].getDescription()).containsIgnoringCase("household members");
     }
 
     @Test
@@ -203,6 +208,80 @@ public class FlywayMigrationAndSchemaTest {
 
         assertThrows(DataIntegrityViolationException.class, () -> {
             savedSchemeRepository.saveAndFlush(duplicateSave);
+        });
+    }
+
+    @Test
+    @DisplayName("Should successfully persist and retrieve HouseholdMember matching Flyway schema")
+    @Transactional
+    void shouldPersistAndRetrieveHouseholdMember() {
+        User user = User.builder()
+                .email("household_schema_user@schemesathi.test")
+                .password("Password123!")
+                .fullName("Household Head")
+                .role(User.UserRole.CITIZEN)
+                .build();
+        user = userRepository.saveAndFlush(user);
+
+        HouseholdMember member = HouseholdMember.builder()
+                .user(user)
+                .fullName("Lakshmi Reddy")
+                .relationship("Spouse")
+                .age(34)
+                .gender("Female")
+                .state("Telangana")
+                .district("Ranga Reddy")
+                .occupation("Homemaker")
+                .annualIncome(0.0)
+                .educationLevel("Graduate")
+                .category("General")
+                .disabilityStatus(false)
+                .landOwnership(false)
+                .maritalStatus("Married")
+                .bplStatus(true)
+                .build();
+        member = householdMemberRepository.saveAndFlush(member);
+        assertThat(member.getId()).isNotNull();
+
+        Optional<HouseholdMember> found = householdMemberRepository.findByIdAndUserId(member.getId(), user.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().getFullName()).isEqualTo("Lakshmi Reddy");
+        assertThat(found.get().getRelationship()).isEqualTo("Spouse");
+        assertThat(found.get().getBplStatus()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Database unique constraint uk_household_member_user_name_rel should prevent duplicate member for same user")
+    void shouldEnforceHouseholdMemberUniqueConstraint() {
+        User user = User.builder()
+                .email("unique_household_user@schemesathi.test")
+                .password("Password123!")
+                .fullName("Unique Test User")
+                .role(User.UserRole.CITIZEN)
+                .build();
+        user = userRepository.saveAndFlush(user);
+
+        HouseholdMember member1 = HouseholdMember.builder()
+                .user(user)
+                .fullName("Rohan Reddy")
+                .relationship("Child")
+                .age(8)
+                .gender("Male")
+                .state("Telangana")
+                .build();
+        householdMemberRepository.saveAndFlush(member1);
+
+        HouseholdMember member2 = HouseholdMember.builder()
+                .user(user)
+                .fullName("Rohan Reddy")
+                .relationship("Child")
+                .age(9)
+                .gender("Male")
+                .state("Telangana")
+                .build();
+
+        assertThrows(DataIntegrityViolationException.class, () -> {
+            householdMemberRepository.saveAndFlush(member2);
         });
     }
 }

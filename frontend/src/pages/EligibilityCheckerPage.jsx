@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import { schemesApi, demoApi } from '../api';
-import { Link } from 'react-router-dom';
+import { schemesApi, demoApi, householdApi } from '../api';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -11,11 +11,13 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  AlertTriangle
+  AlertTriangle,
+  Users
 } from 'lucide-react';
 
 export default function EligibilityCheckerPage() {
   const { user, profile } = useAuth();
+  const [searchParams] = useSearchParams();
 
   // Citizen Profile Form State
   const [formData, setFormData] = useState({
@@ -45,9 +47,12 @@ export default function EligibilityCheckerPage() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  // Prepopulate if logged-in user profile exists
+  const [householdMembers, setHouseholdMembers] = useState([]);
+  const [selectedMemberId, setSelectedMemberId] = useState(searchParams.get('memberId') || 'self');
+
+  // Prepopulate if logged-in user profile exists and self is selected
   useEffect(() => {
-    if (profile && profile.age) {
+    if (selectedMemberId === 'self' && profile && profile.age) {
       const timer = setTimeout(() => {
         setFormData(prev => ({
           ...prev,
@@ -56,7 +61,83 @@ export default function EligibilityCheckerPage() {
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [profile]);
+  }, [profile, selectedMemberId]);
+
+  // Load household members if user is authenticated
+  useEffect(() => {
+    if (user) {
+      householdApi.getAll()
+        .then(res => {
+          if (res.data?.success) {
+            const members = res.data.data || [];
+            setHouseholdMembers(members);
+
+            const paramId = searchParams.get('memberId');
+            if (paramId) {
+              const target = members.find(m => String(m.id) === String(paramId));
+              if (target) {
+                setSelectedMemberId(String(target.id));
+                setFormData({
+                  age: target.age ?? '',
+                  gender: target.gender || 'Female',
+                  state: target.state || 'Telangana',
+                  district: target.district || '',
+                  occupation: target.occupation || '',
+                  annualIncome: target.annualIncome ?? '',
+                  educationLevel: target.educationLevel || '10th',
+                  category: target.category || 'General',
+                  disabilityStatus: Boolean(target.disabilityStatus),
+                  disabilityPercentage: target.disabilityPercentage || 0,
+                  landOwnership: Boolean(target.landOwnership),
+                  landArea: target.landArea ?? '',
+                  employmentStatus: target.employmentStatus || 'Employed',
+                  residenceType: target.residenceType || 'Rural',
+                  bplStatus: Boolean(target.bplStatus),
+                  rationCardType: target.rationCardType || 'APL',
+                  familySize: target.familySize || 4
+                });
+              }
+            }
+          }
+        })
+        .catch(err => console.error('Failed to load household members:', err));
+    }
+  }, [user, searchParams]);
+
+  const handleMemberSelect = (targetId) => {
+    setSelectedMemberId(targetId);
+    if (targetId === 'self') {
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          ...profile
+        }));
+      }
+    } else {
+      const target = householdMembers.find(m => String(m.id) === String(targetId));
+      if (target) {
+        setFormData({
+          age: target.age ?? '',
+          gender: target.gender || 'Female',
+          state: target.state || 'Telangana',
+          district: target.district || '',
+          occupation: target.occupation || '',
+          annualIncome: target.annualIncome ?? '',
+          educationLevel: target.educationLevel || '10th',
+          category: target.category || 'General',
+          disabilityStatus: Boolean(target.disabilityStatus),
+          disabilityPercentage: target.disabilityPercentage || 0,
+          landOwnership: Boolean(target.landOwnership),
+          landArea: target.landArea ?? '',
+          employmentStatus: target.employmentStatus || 'Employed',
+          residenceType: target.residenceType || 'Rural',
+          bplStatus: Boolean(target.bplStatus),
+          rationCardType: target.rationCardType || 'APL',
+          familySize: target.familySize || 4
+        });
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -170,6 +251,40 @@ export default function EligibilityCheckerPage() {
           </div>
 
           <form onSubmit={handleRunAssessment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Household Member Selector for Authenticated Citizens */}
+            {user && (
+              <div style={{
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.25)',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={16} /> Evaluating Eligibility For:
+                </label>
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => handleMemberSelect(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-card)', color: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
+                >
+                  <option value="self">Myself ({user.fullName} - Account Holder)</option>
+                  {householdMembers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.fullName} ({m.relationship}{m.age ? `, ${m.age} yrs` : ''})
+                    </option>
+                  ))}
+                </select>
+                {selectedMemberId !== 'self' && (
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
+                    Evaluating schemes using {householdMembers.find(m => String(m.id) === String(selectedMemberId))?.fullName || 'member'}'s demographic parameters.
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Age & Gender */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>

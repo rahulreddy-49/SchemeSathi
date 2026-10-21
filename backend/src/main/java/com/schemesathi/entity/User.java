@@ -37,6 +37,9 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private CitizenProfile citizenProfile;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private java.util.List<HouseholdMember> householdMembers = new java.util.ArrayList<>();
+
     public enum UserRole {
         CITIZEN, ADMIN
     }
@@ -117,4 +120,7 @@ public class User {
 
     public CitizenProfile getCitizenProfile() { return citizenProfile; }
     public void setCitizenProfile(CitizenProfile citizenProfile) { this.citizenProfile = citizenProfile; }
+
+    public java.util.List<HouseholdMember> getHouseholdMembers() { return householdMembers; }
+    public void setHouseholdMembers(java.util.List<HouseholdMember> householdMembers) { this.householdMembers = householdMembers; }
 }

@@ -32,17 +32,20 @@ public class SchemeController {
     private final SavedSchemeRepository savedSchemeRepository;
     private final EligibilityEngine eligibilityEngine;
     private final CitizenProfileService profileService;
+    private final com.schemesathi.repository.HouseholdMemberRepository householdMemberRepository;
 
     public SchemeController(SchemeService schemeService,
                             SchemeRepository schemeRepository,
                             SavedSchemeRepository savedSchemeRepository,
                             EligibilityEngine eligibilityEngine,
-                            CitizenProfileService profileService) {
+                            CitizenProfileService profileService,
+                            com.schemesathi.repository.HouseholdMemberRepository householdMemberRepository) {
         this.schemeService = schemeService;
         this.schemeRepository = schemeRepository;
         this.savedSchemeRepository = savedSchemeRepository;
         this.eligibilityEngine = eligibilityEngine;
         this.profileService = profileService;
+        this.householdMemberRepository = householdMemberRepository;
     }
 
     @GetMapping
@@ -84,6 +87,7 @@ public class SchemeController {
     @GetMapping("/{id}/eligibility")
     public ResponseEntity<ApiResponse<EligibilityResultDto>> checkEligibility(
             @PathVariable Long id,
+            @RequestParam(required = false) Long memberId,
             @AuthenticationPrincipal User user) {
         if (user == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
@@ -94,19 +98,42 @@ public class SchemeController {
             return ResponseEntity.notFound().build();
         }
 
-        CitizenProfile profile = profileService.getProfileEntity(user);
+        CitizenProfile profile;
+        if (memberId != null) {
+            com.schemesathi.entity.HouseholdMember member = householdMemberRepository.findByIdAndUserId(memberId, user.getId())
+                    .orElse(null);
+            if (member == null) {
+                return ResponseEntity.notFound().build();
+            }
+            profile = member.toCitizenProfile();
+        } else {
+            profile = profileService.getProfileEntity(user);
+        }
+
         EligibilityResultDto result = eligibilityEngine.evaluate(scheme, profile);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/eligibility/all")
     public ResponseEntity<ApiResponse<List<EligibilityResultDto>>> checkAllEligibility(
+            @RequestParam(required = false) Long memberId,
             @AuthenticationPrincipal User user) {
         if (user == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }
 
-        CitizenProfile profile = profileService.getProfileEntity(user);
+        CitizenProfile profile;
+        if (memberId != null) {
+            com.schemesathi.entity.HouseholdMember member = householdMemberRepository.findByIdAndUserId(memberId, user.getId())
+                    .orElse(null);
+            if (member == null) {
+                return ResponseEntity.notFound().build();
+            }
+            profile = member.toCitizenProfile();
+        } else {
+            profile = profileService.getProfileEntity(user);
+        }
+
         List<EligibilityResultDto> results = eligibilityEngine.evaluateAll(profile);
         return ResponseEntity.ok(ApiResponse.success(results));
     }

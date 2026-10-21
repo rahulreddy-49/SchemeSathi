@@ -52,14 +52,25 @@ export const profileApi = {
 export const schemesApi = {
   getAll: (params) => api.get('/schemes', { params }),
   getById: (id) => api.get(`/schemes/${id}`),
-  checkEligibility: (id) => api.get(`/schemes/${id}/eligibility`),
-  checkAllEligibility: () => api.get('/schemes/eligibility/all'),
+  checkEligibility: (id, memberId) => api.get(`/schemes/${id}/eligibility`, { params: memberId ? { memberId } : {} }),
+  checkAllEligibility: (memberId) => api.get('/schemes/eligibility/all', { params: memberId ? { memberId } : {} }),
   evaluateCriteria: (id, criteria) => api.post(`/schemes/${id}/eligibility`, criteria),
   evaluateAllCriteria: (criteria) => api.post('/schemes/eligibility/all', criteria),
   save: (id) => api.post(`/schemes/${id}/save`),
   unsave: (id) => api.delete(`/schemes/${id}/save`),
   getSaved: () => api.get('/schemes/saved'),
   getCategories: () => api.get('/schemes/categories')
+};
+
+// Household Members API
+export const householdApi = {
+  getAll: () => api.get('/household'),
+  getById: (id) => api.get(`/household/${id}`),
+  create: (data) => api.post('/household', data),
+  update: (id, data) => api.put(`/household/${id}`, data),
+  delete: (id) => api.delete(`/household/${id}`),
+  checkEligibility: (id) => api.get(`/household/${id}/eligibility/all`),
+  checkSchemeEligibility: (id, schemeId) => api.get(`/household/${id}/eligibility/${schemeId}`)
 };
 
 // AI API

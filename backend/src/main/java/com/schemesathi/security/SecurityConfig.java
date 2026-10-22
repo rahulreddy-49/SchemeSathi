@@ -18,6 +18,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.core.env.Environment;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,12 +28,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final Environment env;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, Environment env) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.env = env;
     }
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000}")
     private String allowedOrigins;
 
     @Value("${spring.h2.console.enabled:false}")
@@ -63,9 +67,9 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .requestMatchers("/error").permitAll()
 
-                    // Public authentication and demo routes
+                    // Public authentication, health check, and demo routes
                     .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/public/**").permitAll()
+                    .requestMatchers("/api/public/health").permitAll()
                     .requestMatchers("/api/demo/**").permitAll();
 
                 // H2 console only permitted if explicitly enabled
@@ -109,18 +113,31 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        boolean isProduction = env != null && (
+                env.matchesProfiles("prod", "production")
+                || "prod".equalsIgnoreCase(env.getProperty("app.environment"))
+                || "production".equalsIgnoreCase(env.getProperty("app.environment"))
+        );
+
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
+                .filter(s -> !isProduction || (!s.contains("localhost") && !s.contains("127.0.0.1")))
                 .toList();
-        configuration.setAllowedOrigins(origins);
-        configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:[*]",
-            "http://127.0.0.1:[*]",
-            "http://localhost",
-            "http://127.0.0.1",
-            "https://*.vercel.app"
-        ));
+
+        if (!origins.isEmpty()) {
+            configuration.setAllowedOrigins(origins);
+        }
+
+        // Localhost and 127.0.0.1 patterns are strictly permitted in non-production environments only
+        if (!isProduction) {
+            configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:[*]",
+                "http://127.0.0.1:[*]"
+            ));
+        }
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

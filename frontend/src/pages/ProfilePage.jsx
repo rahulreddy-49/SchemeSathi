@@ -22,6 +22,7 @@ import {
   History,
   Info
 } from 'lucide-react';
+import { SchemeVerificationBadge } from '../components/SchemeVerificationBadge';
 
 export default function ProfilePage() {
   const { user, profile, updateProfile } = useAuth();
@@ -1185,9 +1186,10 @@ export default function ProfilePage() {
               {savedSchemes.map((scheme) => (
                 <div key={scheme.id} className="glass-card" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span className="badge badge-primary">{scheme.benefitCategory}</span>
                       <span className="badge badge-secondary">{scheme.scope}</span>
+                      <SchemeVerificationBadge status={scheme.verificationStatus} />
                     </div>
                     <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '4px' }}>
                       {scheme.name}

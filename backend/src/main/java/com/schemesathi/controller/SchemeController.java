@@ -93,7 +93,7 @@ public class SchemeController {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }
 
-        Scheme scheme = schemeRepository.findById(id).orElse(null);
+        Scheme scheme = schemeRepository.findPublishedById(id).orElse(null);
         if (scheme == null) {
             return ResponseEntity.notFound().build();
         }
@@ -147,7 +147,7 @@ public class SchemeController {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }
 
-        Scheme scheme = schemeRepository.findById(id).orElse(null);
+        Scheme scheme = schemeRepository.findPublishedById(id).orElse(null);
         if (scheme == null) {
             return ResponseEntity.notFound().build();
         }
@@ -189,7 +189,7 @@ public class SchemeController {
             return ResponseEntity.ok(ApiResponse.success("Already saved", "Scheme already saved"));
         }
 
-        Scheme scheme = schemeRepository.findById(id).orElse(null);
+        Scheme scheme = schemeRepository.findPublishedById(id).orElse(null);
         if (scheme == null) {
             return ResponseEntity.notFound().build();
         }

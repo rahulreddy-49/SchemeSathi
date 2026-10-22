@@ -14,6 +14,7 @@ import {
   Zap,
   Globe2
 } from 'lucide-react';
+import { SchemeVerificationBadge, SchemeVerificationNotice, isValidHttpUrl } from '../components/SchemeVerificationBadge';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -293,8 +294,11 @@ export default function HomePage() {
                   }}
                 >
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span className="badge badge-primary">{scheme.benefitCategory || 'Central'}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className="badge badge-primary">{scheme.benefitCategory || 'Central'}</span>
+                        <SchemeVerificationBadge status={scheme.verificationStatus} />
+                      </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>
                         {scheme.scope === 'CENTRAL' ? 'Govt of India' : scheme.state || 'State'}
                       </span>
@@ -315,6 +319,12 @@ export default function HomePage() {
                     }}>
                       {scheme.description}
                     </p>
+
+                    <SchemeVerificationNotice
+                      status={scheme.verificationStatus}
+                      officialUrl={scheme.officialUrl}
+                      compact
+                    />
                   </div>
 
                   <div>
@@ -337,7 +347,7 @@ export default function HomePage() {
                       >
                         Check & View
                       </Link>
-                      {scheme.officialUrl && (
+                      {isValidHttpUrl(scheme.officialUrl) && (
                         <a
                           href={scheme.officialUrl}
                           target="_blank"

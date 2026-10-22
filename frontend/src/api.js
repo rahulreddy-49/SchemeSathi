@@ -1,9 +1,37 @@
 import axios from 'axios';
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (!envUrl) return '/api';
-  return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/$/, '')}/api`;
+
+  if (!envUrl || !envUrl.trim()) {
+    if (import.meta.env.PROD) {
+      throw new Error(
+        'Production configuration error: VITE_API_BASE_URL is not defined. ' +
+        'Set VITE_API_BASE_URL to your deployed backend URL (e.g. https://your-backend.onrender.com) in your Vercel Project Settings.'
+      );
+    }
+    // Practical local development fallback using Vite dev-server proxy
+    return '/api';
+  }
+
+  const trimmed = envUrl.trim();
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`Invalid VITE_API_BASE_URL: "${trimmed}". Must be a valid absolute HTTP or HTTPS URL.`);
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`Invalid VITE_API_BASE_URL protocol: "${parsed.protocol}". Must be http: or https:.`);
+  }
+  if (!parsed.hostname) {
+    throw new Error(`Invalid VITE_API_BASE_URL: "${trimmed}". Must include a valid hostname.`);
+  }
+
+  // Avoid accidentally appending /api twice
+  const cleanUrl = trimmed.replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
 };
 
 const api = axios.create({
@@ -98,4 +126,18 @@ export const demoApi = {
   getProfiles: () => api.get('/demo/profiles')
 };
 
+// Admin Scheme Management & Verification API (Requires ROLE_ADMIN)
+export const adminApi = {
+  getSchemes: (params) => api.get('/admin/schemes', { params }),
+  getStats: () => api.get('/admin/schemes/stats'),
+  getSchemeById: (id) => api.get(`/admin/schemes/${id}`),
+  createScheme: (data) => api.post('/admin/schemes', data),
+  updateScheme: (id, data) => api.put(`/admin/schemes/${id}`, data),
+  verifyScheme: (id, data) => api.patch(`/admin/schemes/${id}/verify`, data),
+  publishScheme: (id) => api.patch(`/admin/schemes/${id}/publish`),
+  archiveScheme: (id) => api.patch(`/admin/schemes/${id}/archive`),
+  deleteScheme: (id) => api.delete(`/admin/schemes/${id}`)
+};
+
 export default api;
+

@@ -43,7 +43,7 @@ public class SchemeApplicationService {
             throw new IllegalArgumentException("Scheme ID is required");
         }
 
-        Scheme scheme = schemeRepository.findById(req.getSchemeId())
+        Scheme scheme = schemeRepository.findPublishedById(req.getSchemeId())
                 .orElseThrow(() -> new IllegalArgumentException("Scheme not found with id: " + req.getSchemeId()));
 
         HouseholdMember householdMember = null;

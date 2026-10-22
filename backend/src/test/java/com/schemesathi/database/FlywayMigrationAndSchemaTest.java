@@ -53,13 +53,17 @@ public class FlywayMigrationAndSchemaTest {
     void flywayMigrationsShouldExecuteSuccessfully() {
         assertThat(flyway).isNotNull();
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertThat(appliedMigrations).hasSizeGreaterThanOrEqualTo(3);
+        assertThat(appliedMigrations).hasSizeGreaterThanOrEqualTo(5);
         assertThat(appliedMigrations[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(appliedMigrations[0].getDescription()).containsIgnoringCase("initial schema");
         assertThat(appliedMigrations[1].getVersion().getVersion()).isEqualTo("2");
         assertThat(appliedMigrations[1].getDescription()).containsIgnoringCase("household members");
         assertThat(appliedMigrations[2].getVersion().getVersion()).isEqualTo("3");
         assertThat(appliedMigrations[2].getDescription()).containsIgnoringCase("application tracking");
+        assertThat(appliedMigrations[3].getVersion().getVersion()).isEqualTo("4");
+        assertThat(appliedMigrations[3].getDescription()).containsIgnoringCase("admin scheme management");
+        assertThat(appliedMigrations[4].getVersion().getVersion()).isEqualTo("5");
+        assertThat(appliedMigrations[4].getDescription()).containsIgnoringCase("correct legacy scheme verification");
     }
 
     @Test
@@ -115,6 +119,10 @@ public class FlywayMigrationAndSchemaTest {
                 .scope(Scheme.SchemeScope.CENTRAL)
                 .benefitCategory("Education")
                 .benefits("Scholarship of Rs. 10000")
+                .officialUrl("https://scholarships.gov.in")
+                .sourceUrl("https://scholarships.gov.in")
+                .publicationStatus(Scheme.PublicationStatus.PUBLISHED)
+                .verificationStatus(Scheme.VerificationStatus.VERIFIED)
                 .verificationDate(LocalDate.now())
                 .active(true)
                 .build();
@@ -141,6 +149,9 @@ public class FlywayMigrationAndSchemaTest {
 
         scheme = schemeRepository.saveAndFlush(scheme);
         assertThat(scheme.getId()).isNotNull();
+        assertThat(scheme.getPublicationStatus()).isEqualTo(Scheme.PublicationStatus.PUBLISHED);
+        assertThat(scheme.getVerificationStatus()).isEqualTo(Scheme.VerificationStatus.VERIFIED);
+        assertThat(scheme.getSourceUrl()).isEqualTo("https://scholarships.gov.in");
         assertThat(scheme.getEligibilityRules()).hasSize(1);
         assertThat(scheme.getRequiredDocuments()).hasSize(1);
 
@@ -161,6 +172,7 @@ public class FlywayMigrationAndSchemaTest {
 
     @Test
     @DisplayName("Database unique constraints should reject duplicate user emails")
+    @Transactional
     void shouldEnforceUserEmailUniqueConstraint() {
         User firstUser = User.builder()
                 .email("unique_test@schemesathi.test")
@@ -184,6 +196,7 @@ public class FlywayMigrationAndSchemaTest {
 
     @Test
     @DisplayName("Database unique constraint should prevent duplicate saved schemes for the same user")
+    @Transactional
     void shouldEnforceSavedSchemeUniqueConstraint() {
         User user = User.builder()
                 .email("bookmark_user@schemesathi.test")
@@ -260,6 +273,7 @@ public class FlywayMigrationAndSchemaTest {
 
     @Test
     @DisplayName("Database unique constraint uk_household_member_user_name_rel should prevent duplicate member for same user")
+    @Transactional
     void shouldEnforceHouseholdMemberUniqueConstraint() {
         User user = User.builder()
                 .email("unique_household_user@schemesathi.test")
@@ -338,5 +352,26 @@ public class FlywayMigrationAndSchemaTest {
         assertThat(found.get().getHistory()).hasSize(1);
         assertThat(found.get().getHistory().get(0).getToStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
         assertThat(found.get().getHistory().get(0).getInitiatedBy()).isEqualTo("CITIZEN");
+    }
+
+    @Test
+    @DisplayName("Legacy schemes without actual review evidence are not falsely marked VERIFIED")
+    @Transactional
+    void legacySchemesWithoutReviewEvidenceAreNotFalselyMarkedVerified() {
+        Scheme legacyScheme = Scheme.builder()
+                .name("Legacy Statutory Welfare Scheme")
+                .description("Legacy scheme registered without source gazette review notes")
+                .governmentAuthority("State Government")
+                .scope(Scheme.SchemeScope.STATE)
+                .state("Telangana")
+                .officialUrl("https://telangana.gov.in/schemes/welfare")
+                .build();
+
+        legacyScheme = schemeRepository.saveAndFlush(legacyScheme);
+        assertThat(legacyScheme.getId()).isNotNull();
+
+        // Verification status must default to NEEDS_REVIEW, never falsely defaulting to VERIFIED
+        assertThat(legacyScheme.getVerificationStatus()).isEqualTo(Scheme.VerificationStatus.NEEDS_REVIEW);
+        assertThat(legacyScheme.getVerificationNotes()).isNull();
     }
 }

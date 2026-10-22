@@ -22,25 +22,25 @@ function extractErrorMessage(err, fallback) {
 
   // 1. Network / connection dropped errors
   if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-    return 'Unable to reach backend server. Please verify that the backend is running on port 8080.';
+    return 'Unable to reach SchemeSathi services. The server may be starting up or temporarily unavailable. Please wait a moment and try again.';
   }
 
   const status = err.response?.status;
 
   // 2. Gateway / Proxy errors (Vite proxy, Nginx, Render cold-start)
   if (status === 502 || status === 503 || status === 504) {
-    return `Backend server is unreachable (HTTP ${status}). Please ensure the SchemeSathi backend server is running on port 8080.`;
+    return `SchemeSathi services are temporarily unavailable (HTTP ${status}). The server may be waking from idle; please allow a moment and try again.`;
   }
 
   // 3. 500 Proxy connection refused
   if (status === 500 && typeof err.response?.data === 'string' &&
       (err.response.data.includes('ECONNREFUSED') || err.response.data.includes('Proxy error'))) {
-    return 'Backend server is unreachable on port 8080 (Connection Refused). Please ensure the backend is running.';
+    return 'Unable to connect to SchemeSathi services. The server is currently starting up; please try again in a few moments.';
   }
 
   // 4. 404 Endpoint not found
   if (status === 404) {
-    return 'Backend API endpoint not found (HTTP 404). Please verify that the backend server is running.';
+    return 'The requested service endpoint is temporarily unavailable. Please try again later.';
   }
 
   // 5. Backend structured ApiResponse error messages
@@ -99,7 +99,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await authApi.login({ email, password });
       if (typeof res.data === 'string' && res.data.includes('<!doctype html>')) {
-        throw new Error('Backend server is unreachable. Received HTML instead of API response.');
+        throw new Error('SchemeSathi services are temporarily unavailable. Please wait a moment and try again.');
       }
       if (res.data?.success) {
         const userData = res.data.data;

@@ -18,6 +18,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
+import { SchemeVerificationBadge, SchemeVerificationNotice, isValidHttpUrl } from '../components/SchemeVerificationBadge';
 
 export default function SchemeDetailPage() {
   const { id } = useParams();
@@ -187,10 +188,10 @@ export default function SchemeDetailPage() {
       {/* Scheme Header Banner */}
       <div className="glass-card" style={{ padding: '32px', marginBottom: '32px', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="badge badge-primary">{scheme.benefitCategory || 'Central Scheme'}</span>
             <span className="badge badge-secondary">{scheme.scope === 'CENTRAL' ? 'All India' : scheme.state}</span>
-            <span className="badge badge-success">Official Portal Verified</span>
+            <SchemeVerificationBadge status={scheme.verificationStatus} />
           </div>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -222,7 +223,7 @@ export default function SchemeDetailPage() {
               </button>
             )}
 
-            {scheme.applicationUrl && (
+            {isValidHttpUrl(scheme.applicationUrl) && (
               <a
                 href={scheme.applicationUrl}
                 target="_blank"
@@ -242,14 +243,20 @@ export default function SchemeDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '20px' }}>
           <Building size={16} />
           <span>{scheme.governmentAuthority || 'Government of India'}</span>
-          {scheme.verificationDate && (
-            <span style={{ marginLeft: '12px' }}>• Verified: {scheme.verificationDate}</span>
+          {scheme.verificationStatus === 'VERIFIED' && scheme.verificationDate && (
+            <span style={{ marginLeft: '12px' }}>• Source Verified: {scheme.verificationDate}</span>
           )}
         </div>
 
         <p style={{ fontSize: '1.05rem', color: 'var(--text-main)', lineHeight: 1.6, maxWidth: '950px' }}>
           {scheme.description}
         </p>
+
+        {/* Verification advisory notice for unverified / needs review schemes */}
+        <SchemeVerificationNotice
+          status={scheme.verificationStatus}
+          officialUrl={scheme.sourceUrl || scheme.officialUrl || scheme.applicationUrl}
+        />
       </div>
 
       {/* Main Content Layout */}
@@ -519,9 +526,9 @@ export default function SchemeDetailPage() {
               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)', marginBottom: '8px' }}>
                 Official Verification Link:
               </div>
-              {scheme.officialUrl ? (
+              {isValidHttpUrl(scheme.sourceUrl || scheme.officialUrl) ? (
                 <a
-                  href={scheme.officialUrl}
+                  href={(scheme.sourceUrl || scheme.officialUrl).trim()}
                   target="_blank"
                   rel="noreferrer"
                   style={{
@@ -534,10 +541,10 @@ export default function SchemeDetailPage() {
                   }}
                 >
                   <ExternalLink size={14} style={{ flexShrink: 0 }} />
-                  {scheme.officialUrl}
+                  {(scheme.sourceUrl || scheme.officialUrl).trim()}
                 </a>
               ) : (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Visit district welfare office</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Visit competent district welfare office</span>
               )}
             </div>
           </div>

@@ -185,4 +185,53 @@ class SecurityRouteRulesTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
+
+    // 6. HEALTH ENDPOINT & PUBLIC ROUTE PROTECTION
+    @Test
+    @DisplayName("GET /api/public/health returns 200 OK without authentication")
+    void testHealthEndpoint_unauthenticated_returnsOk() throws Exception {
+        mockMvc.perform(get("/api/public/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("Arbitrary unmapped paths under /api/public/* must require authentication (tightened from wildcard)")
+    void testArbitraryPublicEndpoint_requiresAuth() throws Exception {
+        mockMvc.perform(get("/api/public/internal-service"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // 7. CORS ORIGIN RESTRICTION (Development / Non-Production Profile)
+    @Test
+    @DisplayName("CORS allows configured development origins (localhost and 127.0.0.1 on various ports)")
+    void testCors_allowedLocalOrigin_accepted() throws Exception {
+        mockMvc.perform(options("/api/schemes")
+                .header("Origin", "http://localhost:5173")
+                .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+
+        mockMvc.perform(options("/api/schemes")
+                .header("Origin", "http://localhost:3000")
+                .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+
+        mockMvc.perform(options("/api/schemes")
+                .header("Origin", "http://127.0.0.1:5173")
+                .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:5173"));
+    }
+
+    @Test
+    @DisplayName("CORS rejects untrusted arbitrary vercel subdomains in development")
+    void testCors_untrustedVercelOrigin_rejected() throws Exception {
+        mockMvc.perform(options("/api/schemes")
+                .header("Origin", "https://untrusted-attacker.vercel.app")
+                .header("Access-Control-Request-Method", "GET"))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
 }

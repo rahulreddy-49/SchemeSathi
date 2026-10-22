@@ -17,6 +17,10 @@ public class SchemeDto {
     private String officialUrl;
     private String applicationUrl;
     private String source;
+    private String publicationStatus;
+    private String verificationStatus;
+    private String sourceUrl;
+    private String verificationNotes;
     private LocalDate verificationDate;
     private LocalDate deadline;
     private Boolean active;
@@ -142,7 +146,13 @@ public class SchemeDto {
 
     public SchemeDto() {}
 
-    public SchemeDto(Long id, String name, String description, String objective, String governmentAuthority, String scope, String state, String benefitCategory, String benefits, String applicationProcess, String officialUrl, String applicationUrl, String source, LocalDate verificationDate, LocalDate deadline, Boolean active, String importantWarnings, String commonRejectionReasons, List<EligibilityRuleDto> eligibilityRules, List<RequiredDocumentDto> requiredDocuments, Boolean saved) {
+    public SchemeDto(Long id, String name, String description, String objective, String governmentAuthority,
+                     String scope, String state, String benefitCategory, String benefits,
+                     String applicationProcess, String officialUrl, String applicationUrl, String source,
+                     String publicationStatus, String verificationStatus, String sourceUrl, String verificationNotes,
+                     LocalDate verificationDate, LocalDate deadline, Boolean active,
+                     String importantWarnings, String commonRejectionReasons,
+                     List<EligibilityRuleDto> eligibilityRules, List<RequiredDocumentDto> requiredDocuments, Boolean saved) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -156,6 +166,10 @@ public class SchemeDto {
         this.officialUrl = officialUrl;
         this.applicationUrl = applicationUrl;
         this.source = source;
+        this.publicationStatus = publicationStatus;
+        this.verificationStatus = verificationStatus;
+        this.sourceUrl = sourceUrl;
+        this.verificationNotes = verificationNotes;
         this.verificationDate = verificationDate;
         this.deadline = deadline;
         this.active = active;
@@ -184,6 +198,10 @@ public class SchemeDto {
         private String officialUrl;
         private String applicationUrl;
         private String source;
+        private String publicationStatus;
+        private String verificationStatus;
+        private String sourceUrl;
+        private String verificationNotes;
         private LocalDate verificationDate;
         private LocalDate deadline;
         private Boolean active;
@@ -206,6 +224,10 @@ public class SchemeDto {
         public Builder officialUrl(String officialUrl) { this.officialUrl = officialUrl; return this; }
         public Builder applicationUrl(String applicationUrl) { this.applicationUrl = applicationUrl; return this; }
         public Builder source(String source) { this.source = source; return this; }
+        public Builder publicationStatus(String publicationStatus) { this.publicationStatus = publicationStatus; return this; }
+        public Builder verificationStatus(String verificationStatus) { this.verificationStatus = verificationStatus; return this; }
+        public Builder sourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; return this; }
+        public Builder verificationNotes(String verificationNotes) { this.verificationNotes = verificationNotes; return this; }
         public Builder verificationDate(LocalDate verificationDate) { this.verificationDate = verificationDate; return this; }
         public Builder deadline(LocalDate deadline) { this.deadline = deadline; return this; }
         public Builder active(Boolean active) { this.active = active; return this; }
@@ -216,7 +238,10 @@ public class SchemeDto {
         public Builder saved(Boolean saved) { this.saved = saved; return this; }
 
         public SchemeDto build() {
-            return new SchemeDto(id, name, description, objective, governmentAuthority, scope, state, benefitCategory, benefits, applicationProcess, officialUrl, applicationUrl, source, verificationDate, deadline, active, importantWarnings, commonRejectionReasons, eligibilityRules, requiredDocuments, saved);
+            return new SchemeDto(id, name, description, objective, governmentAuthority, scope, state, benefitCategory, benefits,
+                    applicationProcess, officialUrl, applicationUrl, source, publicationStatus, verificationStatus,
+                    sourceUrl, verificationNotes, verificationDate, deadline, active, importantWarnings,
+                    commonRejectionReasons, eligibilityRules, requiredDocuments, saved);
         }
     }
 
@@ -246,6 +271,14 @@ public class SchemeDto {
     public void setApplicationUrl(String applicationUrl) { this.applicationUrl = applicationUrl; }
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }
+    public String getPublicationStatus() { return publicationStatus; }
+    public void setPublicationStatus(String publicationStatus) { this.publicationStatus = publicationStatus; }
+    public String getVerificationStatus() { return verificationStatus; }
+    public void setVerificationStatus(String verificationStatus) { this.verificationStatus = verificationStatus; }
+    public String getSourceUrl() { return sourceUrl; }
+    public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
+    public String getVerificationNotes() { return verificationNotes; }
+    public void setVerificationNotes(String verificationNotes) { this.verificationNotes = verificationNotes; }
     public LocalDate getVerificationDate() { return verificationDate; }
     public void setVerificationDate(LocalDate verificationDate) { this.verificationDate = verificationDate; }
     public LocalDate getDeadline() { return deadline; }

@@ -13,6 +13,7 @@ import DemoPage from './pages/DemoPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import AdminSchemesPage from './pages/AdminSchemesPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -21,6 +22,20 @@ function ProtectedRoute({ children }) {
   }
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div style={{ padding: '80px', textAlign: 'center' }}>Loading administrator session...</div>;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
   }
   return children;
 }
@@ -45,6 +60,14 @@ export default function App() {
                   <ProtectedRoute>
                     <ProfilePage />
                   </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/schemes" 
+                element={
+                  <AdminRoute>
+                    <AdminSchemesPage />
+                  </AdminRoute>
                 } 
               />
               <Route path="/login" element={<LoginPage />} />

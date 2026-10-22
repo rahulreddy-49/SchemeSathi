@@ -284,15 +284,74 @@ http://localhost:5173
 
 ---
 
-## 🔑 Default Credentials & Demo Access
+## 🔑 Credentials & Admin Provisioning
 
-### Administrator Account
-- **Email**: `admin@schemesathi.in`
-- **Password**: `Admin@SchemeSathi2024`
-- *(Quick fill available on the Login screen)*
+### Development & Demo Mode Only
+In local development (`dev` profile), default demo accounts are seeded automatically on first launch:
+- **Demo Administrator**: `admin@schemesathi.in` / `Admin@SchemeSathi2024`
+- **Demo Citizen**: `citizen@schemesathi.in` / `Citizen@123`
 
-### Citizen Account
-- Register any citizen profile via the **Register** button, or test without an account using the **Demo Mode** tab.
+### Production Administrator Provisioning Procedure
+Demo accounts and default passwords are **strictly disabled** in production (`prod` profile). To provision the initial authorized administrator in production without executing insecure seed scripts or exposing credentials:
+
+1. **Register the Admin Account**:
+   The designated administrator registers through the standard registration interface or via `POST /api/auth/register` with their authorized organizational email and a strong password. This ensures the password is cryptographically salted and hashed using BCrypt.
+   ```bash
+   curl -X POST https://<your-backend-url>/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "fullName": "Authorized Administrator",
+       "email": "admin@official-domain.gov.in",
+       "password": "<StrongPasswordMinimum12Chars!>"
+     }'
+   ```
+2. **Promote to Administrator Role**:
+   An authorized database operator connects to the managed production PostgreSQL database (e.g., via the Render Dashboard Connect Shell or an encrypted `psql` connection) and promotes the user to `ROLE_ADMIN`:
+   ```sql
+   UPDATE users 
+   SET role = 'ADMIN' 
+   WHERE email = 'admin@official-domain.gov.in' AND role = 'CITIZEN';
+   ```
+3. **Verify the Role**:
+   ```sql
+   SELECT id, email, full_name, role, active, created_at 
+   FROM users 
+   WHERE email = 'admin@official-domain.gov.in';
+   ```
+4. **Log In**:
+   The administrator logs in at `/login` or via `POST /api/auth/login`. The issued JWT token contains `"role": "ADMIN"`, granting access to administrative endpoints (`/api/admin/**`).
+
+---
+
+## ☁️ Production Deployment Configuration
+
+### 1. Backend on Render (Web Service + Managed PostgreSQL)
+- **Environment**: Docker (Runtime: `eclipse-temurin:17-jre-alpine`)
+- **Docker Context**: `backend` (or project root with Dockerfile in `backend/Dockerfile`)
+- **Health Check Path**: `/api/public/health` (returns HTTP 200 `{"status":"UP"}` without database queries)
+- **Required Environment Variables**:
+  | Variable | Description | Example / Note |
+  |---|---|---|
+  | `SPRING_PROFILES_ACTIVE` | Active Spring profile | `prod` (defaulted in Dockerfile) |
+  | `SPRING_DATASOURCE_URL` | PostgreSQL JDBC connection URL | `jdbc:postgresql://<host>:5432/<dbname>` |
+  | `SPRING_DATASOURCE_USERNAME` | Database username | Provided by Render PostgreSQL |
+  | `SPRING_DATASOURCE_PASSWORD` | Database password | Provided by Render PostgreSQL |
+  | `JWT_SECRET` | Strong secret (min 32 characters / 256 bits) | e.g. generated via `openssl rand -hex 32` |
+  | `CORS_ALLOWED_ORIGINS` | Trusted frontend origin(s) | `https://your-frontend.vercel.app` |
+  | `LOG_LEVEL` | Application logging level | `INFO` (default) |
+  | `PORT` | Container HTTP port | Automatically assigned by Render (defaults to `8080`) |
+
+### 2. Frontend on Vercel
+- **Framework Preset**: Vite
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Required Environment Variables**:
+  | Variable | Description | Example |
+  |---|---|---|
+  | `VITE_API_BASE_URL` | Absolute URL of deployed Render backend | `https://schemesathi-api.onrender.com` |
+
+*Note: The production build will fail with a clear, actionable error if `VITE_API_BASE_URL` is omitted.*
 
 ---
 
@@ -300,6 +359,7 @@ http://localhost:5173
 
 | Endpoint | Method | Access | Description |
 |---|---|---|---|
+| `/api/public/health` | `GET` | Public | Lightweight container health check (`{"status":"UP"}`) |
 | `/api/auth/register` | `POST` | Public | Register a new citizen account |
 | `/api/auth/login` | `POST` | Public | Authenticate user & return JWT token |
 | `/api/schemes` | `GET` | Public | List schemes (supports `?search=`, `?category=`, `?state=`) |
@@ -313,6 +373,12 @@ http://localhost:5173
 | `/api/profile` | `GET` | Authenticated | Retrieve current citizen's criteria profile |
 | `/api/profile` | `PUT` | Authenticated | Save full profile criteria |
 | `/api/profile` | `PATCH` | Authenticated | Partial update of profile attributes |
+| `/api/admin/schemes` | `GET` | Admin | List all schemes with administrative metadata |
+| `/api/admin/schemes` | `POST` | Admin | Create a new statutory scheme record |
+| `/api/admin/schemes/{id}` | `PUT` | Admin | Update scheme details and eligibility rules |
+| `/api/admin/schemes/{id}/verify` | `PATCH` | Admin | Audit and verify official scheme data sources |
+| `/api/admin/schemes/{id}/publish` | `PATCH` | Admin | Publish verified scheme to citizen catalog |
+| `/api/admin/schemes/{id}/archive` | `PATCH` | Admin | Archive deprecated scheme |
 | `/api/ai/chat` | `POST` | Authenticated | Multi-agent AI assistant query |
 | `/api/demo/schemes` | `GET` | Public | Schemes for unauthenticated demo sandbox |
 | `/api/demo/profiles` | `GET` | Public | Retrieve 3 synthetic citizen personas |

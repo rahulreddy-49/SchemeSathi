@@ -213,6 +213,28 @@ export default function Navbar() {
                     <Bookmark size={16} color="#06b6d4" />
                     Saved Schemes
                   </Link>
+                  {user.role === 'ADMIN' && (
+                    <Link
+                      to="/admin/schemes"
+                      onClick={() => setUserDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        color: 'var(--primary)',
+                        fontWeight: 700,
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(249, 115, 22, 0.12)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <ShieldCheck size={16} color="var(--primary)" />
+                      Admin Scheme Portal
+                    </Link>
+                  )}
                   <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }} />
                   <button
                     onClick={handleLogout}
@@ -302,6 +324,27 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {user?.role === 'ADMIN' && (
+            <Link
+              to="/admin/schemes"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: 'var(--primary)',
+                background: isActive('/admin/schemes') ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.08)',
+                border: '1px solid rgba(249, 115, 22, 0.3)'
+              }}
+            >
+              <ShieldCheck size={20} color="var(--primary)" />
+              <span>Admin Scheme Portal</span>
+            </Link>
+          )}
         </div>
       )}
     </header>

@@ -26,7 +26,8 @@ USER appuser
 
 # Render dynamically assigns PORT at runtime (defaults to 8080 locally)
 ENV PORT=8080
+ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
-# Launch Spring Boot application using assigned port
-ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dserver.port=${PORT} -jar /app/app.jar"]
+# Launch Spring Boot application using assigned port and defaulting to prod profile
+ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dserver.port=${PORT} -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod} -jar /app/app.jar"]

@@ -9,6 +9,7 @@ import {
   Building,
   Info
 } from 'lucide-react';
+import { SchemeVerificationBadge, SchemeVerificationNotice, isValidHttpUrl } from '../components/SchemeVerificationBadge';
 
 export default function SchemesPage() {
   const [searchParams] = useSearchParams();
@@ -250,11 +251,12 @@ export default function SchemesPage() {
               <div>
                 {/* Header tags */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <span className="badge badge-primary">{scheme.benefitCategory || 'General'}</span>
                     <span className="badge badge-secondary">
                       {scheme.scope === 'CENTRAL' ? 'Central' : scheme.state || 'State'}
                     </span>
+                    <SchemeVerificationBadge status={scheme.verificationStatus} />
                   </div>
 
                   {/* Bookmark Button */}
@@ -304,6 +306,13 @@ export default function SchemesPage() {
                 }}>
                   {scheme.description}
                 </p>
+
+                {/* Verification Notice for unverified / needs review */}
+                <SchemeVerificationNotice
+                  status={scheme.verificationStatus}
+                  officialUrl={scheme.officialUrl || scheme.applicationUrl || scheme.sourceUrl}
+                  compact
+                />
 
                 {/* Key Benefits */}
                 <div style={{
@@ -360,7 +369,7 @@ export default function SchemesPage() {
                 >
                   View Full Details
                 </Link>
-                {scheme.officialUrl && (
+                {isValidHttpUrl(scheme.officialUrl) && (
                   <a
                     href={scheme.officialUrl}
                     target="_blank"

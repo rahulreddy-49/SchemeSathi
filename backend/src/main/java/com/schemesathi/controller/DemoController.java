@@ -51,7 +51,7 @@ public class DemoController {
     public ResponseEntity<ApiResponse<EligibilityResultDto>> checkDemoEligibility(
             @PathVariable Long schemeId,
             @Valid @RequestBody CitizenProfileDto profileDto) {
-        Scheme scheme = schemeRepository.findById(schemeId).orElse(null);
+        Scheme scheme = schemeRepository.findPublishedById(schemeId).orElse(null);
         if (scheme == null) {
             return ResponseEntity.notFound().build();
         }

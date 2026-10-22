@@ -47,6 +47,20 @@ public class Scheme {
     @Column(length = 500)
     private String applicationUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private PublicationStatus publicationStatus = PublicationStatus.PUBLISHED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private VerificationStatus verificationStatus = VerificationStatus.NEEDS_REVIEW;
+
+    @Column(length = 500)
+    private String sourceUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String verificationNotes;
+
     @Column(length = 200)
     private String source;
 
@@ -82,9 +96,25 @@ public class Scheme {
         CENTRAL, STATE
     }
 
+    public enum PublicationStatus {
+        DRAFT, PUBLISHED, ARCHIVED
+    }
+
+    public enum VerificationStatus {
+        UNVERIFIED, VERIFIED, NEEDS_REVIEW
+    }
+
     public Scheme() {}
 
-    public Scheme(Long id, String name, String description, String objective, String governmentAuthority, SchemeScope scope, String state, String benefitCategory, String benefits, String applicationProcess, String officialUrl, String applicationUrl, String source, LocalDate verificationDate, LocalDate deadline, Boolean active, String importantWarnings, String commonRejectionReasons, List<EligibilityRule> eligibilityRules, List<RequiredDocument> requiredDocuments, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Scheme(Long id, String name, String description, String objective, String governmentAuthority,
+                  SchemeScope scope, String state, String benefitCategory, String benefits,
+                  String applicationProcess, String officialUrl, String applicationUrl, String source,
+                  PublicationStatus publicationStatus, VerificationStatus verificationStatus,
+                  String sourceUrl, String verificationNotes,
+                  LocalDate verificationDate, LocalDate deadline, Boolean active,
+                  String importantWarnings, String commonRejectionReasons,
+                  List<EligibilityRule> eligibilityRules, List<RequiredDocument> requiredDocuments,
+                  LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -98,6 +128,10 @@ public class Scheme {
         this.officialUrl = officialUrl;
         this.applicationUrl = applicationUrl;
         this.source = source;
+        this.publicationStatus = publicationStatus != null ? publicationStatus : PublicationStatus.PUBLISHED;
+        this.verificationStatus = verificationStatus != null ? verificationStatus : VerificationStatus.NEEDS_REVIEW;
+        this.sourceUrl = sourceUrl != null ? sourceUrl : officialUrl;
+        this.verificationNotes = verificationNotes;
         this.verificationDate = verificationDate;
         this.deadline = deadline;
         this.active = active != null ? active : true;
@@ -127,6 +161,10 @@ public class Scheme {
         private String officialUrl;
         private String applicationUrl;
         private String source;
+        private PublicationStatus publicationStatus = PublicationStatus.PUBLISHED;
+        private VerificationStatus verificationStatus = VerificationStatus.NEEDS_REVIEW;
+        private String sourceUrl;
+        private String verificationNotes;
         private LocalDate verificationDate;
         private LocalDate deadline;
         private Boolean active = true;
@@ -150,6 +188,10 @@ public class Scheme {
         public Builder officialUrl(String officialUrl) { this.officialUrl = officialUrl; return this; }
         public Builder applicationUrl(String applicationUrl) { this.applicationUrl = applicationUrl; return this; }
         public Builder source(String source) { this.source = source; return this; }
+        public Builder publicationStatus(PublicationStatus publicationStatus) { this.publicationStatus = publicationStatus; return this; }
+        public Builder verificationStatus(VerificationStatus verificationStatus) { this.verificationStatus = verificationStatus; return this; }
+        public Builder sourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; return this; }
+        public Builder verificationNotes(String verificationNotes) { this.verificationNotes = verificationNotes; return this; }
         public Builder verificationDate(LocalDate verificationDate) { this.verificationDate = verificationDate; return this; }
         public Builder deadline(LocalDate deadline) { this.deadline = deadline; return this; }
         public Builder active(Boolean active) { this.active = active; return this; }
@@ -161,7 +203,10 @@ public class Scheme {
         public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Scheme build() {
-            return new Scheme(id, name, description, objective, governmentAuthority, scope, state, benefitCategory, benefits, applicationProcess, officialUrl, applicationUrl, source, verificationDate, deadline, active, importantWarnings, commonRejectionReasons, eligibilityRules, requiredDocuments, createdAt, updatedAt);
+            return new Scheme(id, name, description, objective, governmentAuthority, scope, state, benefitCategory, benefits,
+                    applicationProcess, officialUrl, applicationUrl, source, publicationStatus, verificationStatus,
+                    sourceUrl != null ? sourceUrl : officialUrl, verificationNotes, verificationDate, deadline, active,
+                    importantWarnings, commonRejectionReasons, eligibilityRules, requiredDocuments, createdAt, updatedAt);
         }
     }
 
@@ -204,6 +249,18 @@ public class Scheme {
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }
 
+    public PublicationStatus getPublicationStatus() { return publicationStatus; }
+    public void setPublicationStatus(PublicationStatus publicationStatus) { this.publicationStatus = publicationStatus; }
+
+    public VerificationStatus getVerificationStatus() { return verificationStatus; }
+    public void setVerificationStatus(VerificationStatus verificationStatus) { this.verificationStatus = verificationStatus; }
+
+    public String getSourceUrl() { return sourceUrl; }
+    public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
+
+    public String getVerificationNotes() { return verificationNotes; }
+    public void setVerificationNotes(String verificationNotes) { this.verificationNotes = verificationNotes; }
+
     public LocalDate getVerificationDate() { return verificationDate; }
     public void setVerificationDate(LocalDate verificationDate) { this.verificationDate = verificationDate; }
 
@@ -224,6 +281,36 @@ public class Scheme {
 
     public List<RequiredDocument> getRequiredDocuments() { return requiredDocuments; }
     public void setRequiredDocuments(List<RequiredDocument> requiredDocuments) { this.requiredDocuments = requiredDocuments; }
+
+    public void addEligibilityRule(EligibilityRule rule) {
+        if (eligibilityRules == null) {
+            eligibilityRules = new ArrayList<>();
+        }
+        eligibilityRules.add(rule);
+        rule.setScheme(this);
+    }
+
+    public void removeEligibilityRule(EligibilityRule rule) {
+        if (eligibilityRules != null) {
+            eligibilityRules.remove(rule);
+            rule.setScheme(null);
+        }
+    }
+
+    public void addRequiredDocument(RequiredDocument doc) {
+        if (requiredDocuments == null) {
+            requiredDocuments = new ArrayList<>();
+        }
+        requiredDocuments.add(doc);
+        doc.setScheme(this);
+    }
+
+    public void removeRequiredDocument(RequiredDocument doc) {
+        if (requiredDocuments != null) {
+            requiredDocuments.remove(doc);
+            doc.setScheme(null);
+        }
+    }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

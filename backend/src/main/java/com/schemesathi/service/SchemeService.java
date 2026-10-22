@@ -33,7 +33,7 @@ public class SchemeService {
 
     @Transactional(readOnly = true)
     public SchemeDto getSchemeById(Long id, Long userId) {
-        Scheme scheme = schemeRepository.findById(id)
+        Scheme scheme = schemeRepository.findPublishedById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Scheme not found"));
         return toDto(scheme, userId);
     }
@@ -66,7 +66,7 @@ public class SchemeService {
                 .collect(Collectors.toList());
     }
 
-    private SchemeDto toDto(Scheme s, Long userId) {
+    public SchemeDto toDto(Scheme s, Long userId) {
         boolean saved = userId != null && savedSchemeRepository.existsByUserIdAndSchemeId(userId, s.getId());
         return SchemeDto.builder()
                 .id(s.getId())
@@ -82,6 +82,10 @@ public class SchemeService {
                 .officialUrl(s.getOfficialUrl())
                 .applicationUrl(s.getApplicationUrl())
                 .source(s.getSource())
+                .publicationStatus(s.getPublicationStatus() != null ? s.getPublicationStatus().name() : null)
+                .verificationStatus(s.getVerificationStatus() != null ? s.getVerificationStatus().name() : Scheme.VerificationStatus.UNVERIFIED.name())
+                .sourceUrl(s.getSourceUrl())
+                .verificationNotes(s.getVerificationNotes())
                 .verificationDate(s.getVerificationDate())
                 .deadline(s.getDeadline())
                 .active(s.getActive())
